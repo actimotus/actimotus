@@ -1,0 +1,29 @@
+[project]
+name = "acti-motus"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Josef Heidler", email = "heidlerjosef@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.2.6",
+    "pandas>=2.2.3",
+    "scikit-digital-health>=0.17.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "labda-parsers",
+    "pyinstrument>=5.0.2",
+    "ruff>=0.11.11",
+]
+
+[tool.uv.sources]
+labda-parsers = { path = "../labda-parsers", editable = true }
