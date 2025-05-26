@@ -9,13 +9,13 @@ from scipy import signal
 
 SYSTEM_SF = 30
 NYQUIST_FREQ = SYSTEM_SF / 2
+SENS_NORMALIZATION_FACTOR = -4 / 512
 
 
 @dataclass
 class Features:
-    calibrate: bool = False
     sampling_frequency: float | None = None
-    backend: bool = False
+    calibrate: bool = False
 
     @staticmethod
     def get_sampling_frequency(
@@ -30,11 +30,9 @@ class Features:
 
         return 1 / np.mean(np.diff(time.astype(int) / 1e9))
 
-    def upsample(self, df: pd.DataFrame) -> pd.DataFrame:
-        sf = self.sampling_frequency or self.get_sampling_frequency(df)
-
+    def upsample(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
         n = len(df)
-        periods = int(SYSTEM_SF * np.fix(n / sf))
+        periods = int(SYSTEM_SF * np.fix(n / sampling_frequency))
 
         # arr = df.to_numpy()
         # upsampled = signal.resample(arr, periods, axis=0)
@@ -97,7 +95,7 @@ class Features:
         arr = np.pad(arr, (0, pad_width), mode="edge")
 
         windows = sliding_window_view(arr, window)[::SYSTEM_SF]
-        windows = windows - np.mean(windows, axis=1, keepdims=True)
+        windows = windows - np.mean(windows, axis=1, keepdims=True, dtype=np.float32)
 
         fft_result = np_fft(windows, fft_size)[:, :half_size]
         magnitudes = 2 * np.abs(fft_result)
@@ -207,7 +205,8 @@ class Features:
     def extract(self, df: pd.DataFrame) -> pd.DataFrame:
         self.check_format(df)
 
-        df = self.upsample(df)
+        sf = self.sampling_frequency or self.get_sampling_frequency(df)
+        df = self.upsample(df, sf)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
         downsampled = self.downsample(df)
@@ -219,5 +218,93 @@ class Features:
             periods=len(df),
             freq=timedelta(seconds=1),
         )
+        df["sf"] = sf
 
         return df
+
+    @staticmethod
+    def to_sens(
+        df: pd.DataFrame,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        float_factor = 1_000_000
+        features = [
+            "x",
+            "y",
+            "z",
+            "sd_x",
+            "sd_y",
+            "sd_z",
+            "sum_x",
+            "sum_z",
+            "sq_sum_x",
+            "sq_sum_z",
+            "sum_dot_xz",
+            "hl_ratio",
+            "walk_feature",
+            "run_feature",
+            "sf",
+        ]
+
+        df = df.copy()
+        df.index = df.index.astype(np.int64) // 10**6  # Time in milliseconds
+        df.drop(columns=["sum_y", "sq_sum_y"], inplace=True)
+
+        df.fillna(0, inplace=True)
+        df[features] = (df[features] * float_factor).astype(np.int32)
+
+        df["data"] = 1
+        df["data"] = df["data"].astype(np.int16)
+
+        df["verbose"] = 0
+        df["verbose"] = df["verbose"].astype(np.int32)
+
+        return (
+            df.index.values,
+            df["data"].values,
+            df[features].values,
+            df["verbose"].values,
+        )
+
+    @staticmethod
+    def _raw_from_server(
+        timestamps: np.ndarray,
+        data: np.ndarray,
+        values: list[str] = ["acc_x", "acc_y", "acc_z"],
+    ) -> pd.DataFrame:
+        df = pd.DataFrame(
+            data,
+            index=timestamps,
+            columns=values,
+        )
+
+        df = df * SENS_NORMALIZATION_FACTOR
+        df.index = pd.to_datetime(df.index, unit="ms")  # type: ignore
+        df.index.name = "datetime"
+
+        return df
+
+    @staticmethod
+    def _df_to_server(
+        df: pd.DataFrame,
+    ) -> tuple[
+        np.ndarray,
+        np.ndarray,
+    ]:
+        df = df / SENS_NORMALIZATION_FACTOR
+        timestamps = (df.index.astype(np.int64) // 10**6).to_numpy()
+        timestamps = np.array([timestamps])
+
+        data = df.to_numpy()
+        data = np.array([data])
+
+        return timestamps, data
+
+    def sens_extract(
+        self,
+        timestamps: np.ndarray,
+        data: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        df = self._raw_from_server(timestamps[0], data[0])
+        features = self.extract(df)
+
+        return self.to_sens(features)
