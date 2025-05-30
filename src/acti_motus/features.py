@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+import numba as nb
 import numpy as np
 import pandas as pd
 from numpy.fft import fft as np_fft
@@ -10,6 +11,14 @@ from scipy import signal
 SYSTEM_SF = 30
 NYQUIST_FREQ = SYSTEM_SF / 2
 SENS_NORMALIZATION_FACTOR = -4 / 512
+HL_RATIO_WINDOW = SYSTEM_SF * 4
+STEPS_WINDOW = 480
+
+
+@nb.njit
+def jit_fft(x):
+    size = STEPS_WINDOW
+    return np_fft(x, size)
 
 
 @dataclass
@@ -28,20 +37,11 @@ class Features:
         if samples:
             time = time[:samples]
 
-        return 1 / np.mean(np.diff(time.astype(int) / 1e9))
+        return (1 / np.mean(np.diff(time.astype(int) / 1e9))).item()
 
     def upsample(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
         n = len(df)
         periods = int(SYSTEM_SF * np.fix(n / sampling_frequency))
-
-        # arr = df.to_numpy()
-        # upsampled = signal.resample(arr, periods, axis=0)
-
-        # df = pd.DataFrame(
-        #     upsampled,
-        #     columns=df.columns,
-        #     index=pd.date_range(start=df.index[0], end=df.index[-1], periods=periods),
-        # )
 
         datetimes = pd.date_range(start=df.index[0], end=df.index[-1], periods=periods)
         df = pd.DataFrame(
@@ -54,7 +54,6 @@ class Features:
     def get_hl_ratio(self, df: pd.DataFrame) -> pd.Series:
         order = 3
         cut_off = 1
-        window = SYSTEM_SF * 4
 
         cut_off = cut_off / NYQUIST_FREQ
 
@@ -68,14 +67,18 @@ class Features:
         high = signal.filtfilt(b, a, axis_z, axis=0)
         high = np.abs(high.astype(np.float32))
 
-        pad_width = window - 1
+        pad_width = HL_RATIO_WINDOW - 1
         high = np.pad(high, (0, pad_width), mode="edge")
         low = np.pad(low, (0, pad_width), mode="edge")
 
-        high_windows = sliding_window_view(high, window_shape=window)[::SYSTEM_SF]
+        high_windows = sliding_window_view(high, window_shape=HL_RATIO_WINDOW)[
+            ::SYSTEM_SF
+        ]
         mean_high = np.mean(high_windows, axis=1, dtype=np.float32)
 
-        low_windows = sliding_window_view(low, window_shape=window)[::SYSTEM_SF]
+        low_windows = sliding_window_view(low, window_shape=HL_RATIO_WINDOW)[
+            ::SYSTEM_SF
+        ]
         mean_low = np.mean(low_windows, axis=1, dtype=np.float32)
 
         hl_ratio = np.divide(
@@ -84,11 +87,9 @@ class Features:
 
         return pd.Series(hl_ratio, name="hl_ratio")
 
-    @staticmethod
-    def _get_steps_feature(arr: np.ndarray) -> np.ndarray:
+    def _get_steps_feature(self, arr: np.ndarray) -> np.ndarray:
         window = SYSTEM_SF * 4
-        fft_size = 480
-        half_size = fft_size // 2
+        half_size = STEPS_WINDOW // 2
         arr = arr.astype(np.float32)
 
         pad_width = window - 1
@@ -97,7 +98,7 @@ class Features:
         windows = sliding_window_view(arr, window)[::SYSTEM_SF]
         windows = windows - np.mean(windows, axis=1, keepdims=True, dtype=np.float32)
 
-        fft_result = np_fft(windows, fft_size)[:, :half_size]
+        fft_result = jit_fft(windows)[:, :half_size]
         magnitudes = 2 * np.abs(fft_result)
 
         return np.argmax(magnitudes, axis=1)
@@ -123,8 +124,7 @@ class Features:
 
         return df
 
-    @staticmethod
-    def get_tensor(arr: np.ndarray) -> np.ndarray:
+    def get_tensor(self, arr: np.ndarray) -> np.ndarray:
         pb = np.vstack((arr[:SYSTEM_SF], arr))
         pa = np.vstack((arr, arr[-SYSTEM_SF:]))
         n = pb.shape[0] // SYSTEM_SF
@@ -174,8 +174,7 @@ class Features:
 
         return df
 
-    @staticmethod
-    def check_format(df: pd.DataFrame) -> bool:
+    def check_format(self, df: pd.DataFrame) -> bool:
         if not isinstance(df, pd.DataFrame):
             raise TypeError("Input must be a pandas DataFrame.")
 
@@ -222,8 +221,8 @@ class Features:
 
         return df
 
-    @staticmethod
     def to_sens(
+        self,
         df: pd.DataFrame,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         float_factor = 1_000_000
@@ -265,8 +264,8 @@ class Features:
             df["verbose"].values,
         )
 
-    @staticmethod
     def _raw_from_server(
+        self,
         timestamps: np.ndarray,
         data: np.ndarray,
         values: list[str] = ["acc_x", "acc_y", "acc_z"],
@@ -283,8 +282,8 @@ class Features:
 
         return df
 
-    @staticmethod
     def _df_to_server(
+        self,
         df: pd.DataFrame,
     ) -> tuple[
         np.ndarray,
