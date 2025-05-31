@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "acti-motus"
 version = "0.1.0"
@@ -10,21 +14,44 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.2.6",
     "pandas>=2.2.3",
-    "scikit-digital-health>=0.17.9",
+    "pyarrow>=20.0.0",
+    "rocket-fft>=0.2.5",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
     "labda-parsers",
+    "pre-commit>=4.2.0",
     "pyinstrument>=5.0.2",
-    "rocket-fft>=0.2.5",
     "ruff>=0.11.11",
 ]
 
 [tool.uv.sources]
 labda-parsers = { path = "../labda-parsers", editable = true }
+
+[tool.ruff.lint]
+pydocstyle = { convention = 'google' }
+
+[tool.ruff]
+line-length = 120
+target-version = 'py311'
+
+[tool.ruff.format]
+quote-style = 'single'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
