@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from datetime import timedelta
 
-import numba as nb
 import numpy as np
 import pandas as pd
 from numpy.fft import fft as np_fft
@@ -15,14 +14,6 @@ logger = logging.getLogger(__name__)
 
 NYQUIST_FREQ = SYSTEM_SF / 2
 SENS_NORMALIZATION_FACTOR = -4 / 512
-HL_RATIO_WINDOW = SYSTEM_SF * 4
-STEPS_WINDOW = 480
-
-
-@nb.njit
-def jit_fft(x):
-    size = STEPS_WINDOW
-    return np_fft(x, size)
 
 
 @dataclass
@@ -61,7 +52,7 @@ class Features:
     def get_hl_ratio(self, df: pd.DataFrame) -> pd.Series:
         order = 3
         cut_off = 1
-
+        window = SYSTEM_SF * 4
         cut_off = cut_off / NYQUIST_FREQ
 
         axis_z = df['acc_z'].values
@@ -74,14 +65,14 @@ class Features:
         high = signal.filtfilt(b, a, axis_z, axis=0)
         high = np.abs(high.astype(np.float32))
 
-        pad_width = HL_RATIO_WINDOW - 1
+        pad_width = window - 1
         high = np.pad(high, (0, pad_width), mode='edge')
         low = np.pad(low, (0, pad_width), mode='edge')
 
-        high_windows = sliding_window_view(high, window_shape=HL_RATIO_WINDOW)[::SYSTEM_SF]
+        high_windows = sliding_window_view(high, window)[::SYSTEM_SF]
         mean_high = np.mean(high_windows, axis=1, dtype=np.float32)
 
-        low_windows = sliding_window_view(low, window_shape=HL_RATIO_WINDOW)[::SYSTEM_SF]
+        low_windows = sliding_window_view(low, window)[::SYSTEM_SF]
         mean_low = np.mean(low_windows, axis=1, dtype=np.float32)
 
         hl_ratio = np.divide(
@@ -91,8 +82,9 @@ class Features:
         return pd.Series(hl_ratio, name='hl_ratio')
 
     def _get_steps_feature(self, arr: np.ndarray) -> np.ndarray:
-        window = SYSTEM_SF * 4
-        half_size = STEPS_WINDOW // 2
+        window = SYSTEM_SF * 4  # 120 samples equal to 2 seconds
+        steps_window = 4 * window  # 480 samples equal to 8 seconds
+        half_size = window * 2  # 240 samples equal to 4 seconds
         arr = arr.astype(np.float32)
 
         pad_width = window - 1
@@ -101,7 +93,7 @@ class Features:
         windows = sliding_window_view(arr, window)[::SYSTEM_SF]
         windows = windows - np.mean(windows, axis=1, keepdims=True, dtype=np.float32)
 
-        fft_result = jit_fft(windows)[:, :half_size]
+        fft_result = np_fft(windows, steps_window)[:, :half_size]
         magnitudes = 2 * np.abs(fft_result)
 
         return np.argmax(magnitudes, axis=1)

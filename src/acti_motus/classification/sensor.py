@@ -1,10 +1,13 @@
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal
 
 import numpy as np
 import pandas as pd
+
+from .references import Angle, AngleStatus, Calibration
 
 # NON-WEAR BOUTS SETTINGS
 SHORT_OFF_BOUTS = 600
@@ -13,6 +16,11 @@ ON_BOUTS = 60
 DEGREES_TOLERANCE = 5
 
 logger = logging.getLogger(__name__)
+
+
+class Calculation(Enum):
+    AUTOMATIC = 'automatic'
+    DEFAULT = 'default'
 
 
 @dataclass
@@ -66,7 +74,7 @@ class Sensor(ABC):
 
     def _fix_on_bouts(
         self,
-        non_wear: pd.DataFrame,
+        non_wear: pd.Series,
     ) -> pd.Series:
         bouts = (non_wear != non_wear.shift()).cumsum()
         bout_sizes = bouts[~non_wear].value_counts()
@@ -101,18 +109,110 @@ class Sensor(ABC):
 
         return non_wear
 
-    def get_non_wear(self, df: pd.DataFrame) -> pd.DataFrame:
+    def get_non_wear(self, df: pd.DataFrame) -> pd.Series | pd.DataFrame:
         non_wear = self._fix_off_bouts(df)
         non_wear = self._fix_on_bouts(non_wear)
         non_wear = self._fix_off_bouts_angles(non_wear, df)
 
-        ratio = non_wear.value_counts(normalize=True)
+        ratio = non_wear.value_counts(normalize=True).to_dict()
         total_time = (df.index[-1] - df.index[0]).floor('s')
-        non_wear_time = pd.Timedelta(seconds=ratio[True] * total_time.total_seconds()).floor('s')
-        non_wear_percentage = ratio[True] * 100
+        non_wear_ratio = ratio.get(True)
+
+        if non_wear_ratio:
+            non_wear_time = pd.Timedelta(seconds=non_wear_ratio * total_time.total_seconds()).floor('s')
+            non_wear_percentage = non_wear_ratio * 100
+        else:
+            non_wear_time = pd.Timedelta(seconds=0)
+            non_wear_percentage = 0
 
         logger.info(
             f'Non-wear detection: {non_wear_time} ({non_wear_percentage:.2f}%) out of {total_time} classified as non-wear time.'
         )
 
         return non_wear
+
+    def fix_sensor_orientation(
+        self,
+        df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        df = df.copy()
+        upside_down = self.check_upside_down_flip(df)
+        inside_out = self.check_inside_out_flip(df)
+        columns = None
+
+        if upside_down and inside_out:
+            columns = ['x', 'z', 'sum_x', 'sum_z', 'sum_dot_xz', 'direction']
+            text = 'upside down and inside out'
+
+        elif inside_out:
+            columns = ['y', 'z', 'sum_y', 'sum_z', 'sum_dot_xz', 'side_tilt', 'direction']
+            text = 'inside out'
+
+        elif upside_down:
+            columns = ['x', 'y', 'sum_x', 'sum_y', 'sum_dot_xz', 'side_tilt']
+            text = 'upside down'
+
+        if columns:
+            df[columns] = -df[columns]
+            df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
+
+            logger.warning(f'Sensor is {text}. Data flipped {columns} and angles recalculated.')
+        else:
+            logger.info('No sensor flip detected. No changes made to the data.')
+
+        return df
+
+    @abstractmethod
+    def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
+        pass
+
+    @abstractmethod
+    def check_upside_down_flip(self, df: pd.DataFrame) -> bool:
+        pass
+
+    @abstractmethod
+    def calculate_reference_angle(self, df: pd.DataFrame) -> tuple[float, Calculation]:
+        pass
+
+    @abstractmethod
+    def rotate_by_reference_angle(self, df: pd.DataFrame, angle: float | list[float]) -> pd.DataFrame:
+        pass
+
+    def update_df_by_references(self, df: pd.DataFrame, bouts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        df = df.copy()
+        bouts = bouts.copy()
+        angles = []
+        prev_angle_value = None
+
+        for start, end, non_wear, angle, calibration in bouts.to_numpy():
+            bout_df = df[start:end]
+            df.loc[bout_df.index] = self.fix_sensor_orientation(bout_df)
+
+            if angle:
+                angle.status = AngleStatus.PROPAGATED
+                prev_angle_value = angle.value
+
+            elif isinstance(calibration, Calibration):
+                calibration_period = calibration.get_calibration_period(bout_df)
+                value, status = self.calculate_reference_angle(calibration_period)
+                status = AngleStatus.CALIBRATION if status == Calculation.AUTOMATIC else AngleStatus.DEFAULT
+                expires = calibration.expires or None
+                angle = Angle(value, expires, status)
+                prev_angle_value = angle.value
+
+            else:
+                if non_wear and prev_angle_value:
+                    value, expires, status = prev_angle_value, None, AngleStatus.DEFAULT
+                else:
+                    value, status = self.calculate_reference_angle(bout_df)
+                    expires = None
+
+                angle = Angle(value, expires, status)
+                prev_angle_value = angle.value
+
+            angles.append(angle)
+            df.loc[bout_df.index] = self.rotate_by_reference_angle(bout_df, angle.value)
+
+        bouts['angle'] = pd.Series(angles, dtype=object)
+
+        return df, bouts
