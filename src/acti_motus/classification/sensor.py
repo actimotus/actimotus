@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,7 @@ class Calculation(Enum):
 
 @dataclass
 class Sensor(ABC):
-    vendor: Literal['Sens', 'Other']
+    vendor: Literal['Sens', 'Other'] = 'Other'
 
     def get_angles(self, df: pd.DataFrame) -> pd.DataFrame:
         axes = df[['x', 'y', 'z']].to_numpy()
@@ -53,7 +53,7 @@ class Sensor(ABC):
         sd_mean = df[['sd_x', 'sd_y', 'sd_z']].mean(axis=1)
         sd_sum = df[['sd_x', 'sd_y', 'sd_z']].sum(axis=1)
         non_wear = sd_mean < 0.01
-        non_wear.name = 'non_wear'
+        non_wear.name = 'non-wear'
 
         bouts = (non_wear != non_wear.shift()).cumsum()
         bout_sizes = bouts[non_wear].value_counts()
@@ -62,11 +62,11 @@ class Sensor(ABC):
 
         small_bouts = bout_sizes[(bout_sizes <= LONG_OFF_BOUTS) & (bout_sizes > SHORT_OFF_BOUTS)]
         small_bouts = bouts[bouts.isin(small_bouts.index)].drop_duplicates(keep='first').reset_index(drop=False)
-        small_bouts.rename(columns={'datetime': 'end', 'non_wear': 'bout'}, inplace=True)
+        small_bouts.rename(columns={'datetime': 'end', 'non-wear': 'bout'}, inplace=True)
         small_bouts.insert(0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5))
 
-        small_bouts['non_wear'] = small_bouts.apply(self._get_small_bout_max, args=(sd_sum,), axis=1)
-        small_bouts = small_bouts.loc[small_bouts['non_wear'], 'bout'].values
+        small_bouts['non-wear'] = small_bouts.apply(self._get_small_bout_max, args=(sd_sum,), axis=1)
+        small_bouts = small_bouts.loc[small_bouts['non-wear'], 'bout'].values
 
         non_wear = bouts.isin(large_bouts) | bouts.isin(small_bouts)
 
@@ -178,6 +178,10 @@ class Sensor(ABC):
     def rotate_by_reference_angle(self, df: pd.DataFrame, angle: float | list[float]) -> pd.DataFrame:
         pass
 
+    @abstractmethod
+    def detect_activities(self, df: pd.DataFrame, references: dict[str, Any] | None = None) -> pd.DataFrame:
+        pass
+
     def update_df_by_references(self, df: pd.DataFrame, bouts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = df.copy()
         bouts = bouts.copy()
@@ -216,3 +220,48 @@ class Sensor(ABC):
         bouts['angle'] = pd.Series(angles, dtype=object)
 
         return df, bouts
+
+    def _fix_short_bouts(self, df: pd.DataFrame) -> pd.DataFrame:
+        size = len(df)
+        before = df['activity_before'].values[0]
+        after = df['activity_after'].values[0]
+
+        if size == 1:
+            df['activity'] = after if after else before
+        else:
+            half = size // 2
+            first_half = df.iloc[:half]
+            second_half = df.iloc[half:]
+
+            df.loc[first_half.index, 'activity'] = before
+            df.loc[second_half.index, 'activity'] = after
+
+        return df['activity']
+
+    def fix_bouts(
+        self,
+        activities: pd.Series,
+        activity: str,
+        bouts_length: int,
+    ) -> pd.Series:
+        df = activities.to_frame('activity')
+        df['bout'] = (df['activity'] != df['activity'].shift()).cumsum()
+
+        specific_activity = df.loc[df['activity'] == activity, 'bout']
+        bout_sizes = specific_activity.value_counts()
+        short_bouts = bout_sizes[bout_sizes < bouts_length].index.values  # FIXME: Try < or <=
+
+        df['short'] = False
+        df.loc[df['bout'].isin(short_bouts), 'short'] = True
+        df['activity_before'] = df['activity'].shift()
+        df['activity_after'] = df['activity'].shift(-1)
+
+        updated_bouts = (
+            df[df['short']]
+            .groupby('bout')
+            .apply(self._fix_short_bouts, include_groups=False)
+            .reset_index(drop=True, level=0)
+        )
+        df.loc[df['short'], 'activity'] = updated_bouts
+
+        return df['activity']

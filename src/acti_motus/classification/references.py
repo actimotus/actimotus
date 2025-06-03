@@ -152,7 +152,7 @@ class References:
             self.trunk = None
             logger.info('Trunk angle reference has expired and has been removed.')
 
-    def remove_outdated_references(self, date: datetime) -> None:
+    def remove_outdated(self, date: datetime) -> None:
         """Remove outdated references based on the dataframe start time."""
         self.remove_outdated_calibrations(date)
         self.remove_expired_angles(date)

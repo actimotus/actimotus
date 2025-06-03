@@ -1,13 +1,29 @@
 import logging
+import math
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
+from scipy.signal import medfilt
 
 from ..settings import SYSTEM_SF
+from .references import References
 from .sensor import Calculation, Sensor
 
 logger = logging.getLogger(__name__)
+
+BOUTS_LENGTH = {
+    'sit': 5,
+    'stand': 2,
+    'move': 2,
+    'walk': 2,
+    'run': 2,
+    'stairs': 5,
+    'bicycle': 15,
+    'row': 15,
+    'lie': 1,
+}
 
 
 @dataclass
@@ -152,3 +168,331 @@ class Thigh(Sensor):
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
 
         return df
+
+    def _downsample_sd_correction_for_sens(
+        self,
+        df: pd.DataFrame,
+        sampling_frequency: float,
+        tolerance: float = 1,
+    ) -> None:
+        values = None
+
+        if math.isclose(sampling_frequency, 25, rel_tol=tolerance):
+            values = (0.18, 1.03)
+        elif math.isclose(sampling_frequency, 12.5, rel_tol=tolerance):
+            values = (0.02, 1.14)
+
+        if values:
+            df[['sd_x', 'sd_y', 'sd_z']] = df[['sd_x', 'sd_y', 'sd_z']].apply(
+                lambda x: values[0] * x**2 + values[1] * x
+            )
+            logger.info(
+                f'Applied SD correction which is specific for Sens sensors [{values[0]} * x^2 + {values[1]} * x] for {sampling_frequency:.2f} Hz.'
+            )
+        else:
+            logger.warning(f'No correction applied for sampling frequency {sampling_frequency:.2f} Hz on axes.')
+
+    def _median_filter(
+        self,
+        valid: pd.Series,
+        bouts_length: int,
+    ) -> pd.Series:
+        length = 2 * bouts_length - 1
+        filtered = medfilt(valid.astype(int), length)
+        filtered = medfilt(filtered, length)
+
+        valid = pd.Series(filtered.astype(bool), index=valid.index, name='median_filtered')
+
+        return valid
+
+    def get_row(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        move_threshold: float = 0.1,
+    ) -> pd.Series:
+        valid = (90 < df['inclination']) & (move_threshold < df['sd_x'])
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'row'
+
+        return valid
+
+    def get_bicycle(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        move_threshold: float = 0.1,
+        bicycle_threshold: float = 40,
+    ) -> pd.Series:
+        valid = ((bicycle_threshold - 15) < df['direction']) & (df['inclination'] < 90) & (move_threshold < df['sd_x'])
+
+        valid = pd.Series(medfilt(valid.astype(int), 9), index=df.index)
+        valid = valid & ((df['hl_ratio'] < 0.5) | (df['direction'] > bicycle_threshold))
+
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'bicycle'
+
+        return valid
+
+    def _get_stairs_threshold(
+        self,
+        df: pd.DataFrame,
+        run_threshold: float,
+        stairs_threshold: float = 4,
+    ) -> float:
+        valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (df['direction'] < 25)
+
+        valid = df.loc[valid, 'direction']
+        valid = stairs_threshold + np.median(valid)  # type: ignore
+        return valid.item()
+
+    def get_stairs(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        stationary_threshold: float = 45,
+        move_threshold: float = 0.1,
+        run_threshold: float = 0.72,
+        bicycle_threshold: float = 40,
+    ) -> tuple[pd.Series, float]:
+        stairs_threshold = self._get_stairs_threshold(df, run_threshold)
+
+        valid = (
+            (stairs_threshold < df['direction'])
+            & (df['direction'] < bicycle_threshold)
+            & (move_threshold < df['sd_x'])
+            & (df['sd_x'] < run_threshold)
+            & (df['inclination'] < stationary_threshold)
+        )
+
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'stairs'
+
+        return valid, stairs_threshold
+
+    def get_run(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        stationary_threshold: float = 45,
+        run_threshold: float = 0.72,
+    ) -> pd.Series:
+        valid = (df['sd_x'] > run_threshold) & (df['inclination'] < stationary_threshold)
+
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'run'
+
+        return valid
+
+    def get_walk(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        stairs_threshold: float,
+        stationary_threshold: float = 45,
+        move_threshold: float = 0.1,
+        run_threshold: float = 0.72,
+    ) -> pd.Series:
+        valid = (
+            (move_threshold < df['sd_x'])
+            & (df['sd_x'] < run_threshold)
+            & (df['direction'] < stairs_threshold)
+            & (df['inclination'] < stationary_threshold)
+        )
+
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'walk'
+
+        return valid
+
+    def get_stand(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        stationary_threshold: float = 45,
+        move_threshold: float = 0.1,
+    ) -> pd.Series:
+        sd_max = np.max(df[['sd_x', 'sd_y', 'sd_z']], axis=1)
+        valid = (df['inclination'] < stationary_threshold) & (sd_max < move_threshold)
+
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'stand'
+
+        return valid
+
+    def get_sit(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+        stationary_threshold: float = 45,
+    ) -> pd.Series:
+        valid = df['inclination'] > stationary_threshold
+        valid = self._median_filter(valid, bouts_length)
+        valid.name = 'sit'
+
+        return valid
+
+    def _get_activity_column(self, df: pd.DataFrame) -> pd.Series:
+        # Order matters here
+        categories = [
+            'row',
+            'bicycle',
+            'stairs',
+            'run',
+            'walk',
+            'stand',
+            'sit',
+        ]
+
+        df = df[categories].copy()
+        df['move'] = True  # If nothing else, it is move
+
+        categories.append('move')
+        activity = df[categories].idxmax(axis=1)
+        categories = categories + ['lie', 'non-wear']
+        activity = activity.astype(pd.CategoricalDtype(categories=categories))
+        activity.name = 'activity'
+
+        return activity
+
+    def _fix_activities_bouts(self, df: pd.DataFrame, bouts: dict[str, int]) -> pd.Series:
+        activities = df['activity']
+
+        # Order matters here - move position changed
+        for activity in [
+            'row',
+            'bicycle',
+            'stairs',
+            'run',
+            'walk',
+            'move',
+            'stand',
+            'sit',
+        ]:
+            activities = self.fix_bouts(activities, activity, bouts[activity])
+
+        return activities
+
+    def _get_rotational_crossing_points(
+        self,
+        df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        angle_high_threshold = 65
+        angle_low_threshold = 64
+        noise_margin = 0.05
+
+        thigh_angle = np.arcsin(df['y'] / np.sqrt(np.square(df['y']) + np.square(df['z'])))  # type: pd.Series
+        thigh_angle = np.absolute(np.degrees(thigh_angle))
+
+        low = (thigh_angle <= angle_low_threshold).diff()
+        high = (thigh_angle >= angle_high_threshold).diff()
+
+        noise = thigh_angle.diff().abs()
+        noise = noise >= noise_margin
+
+        low = low & noise
+        high = high & noise
+
+        return pd.DataFrame({'low': low, 'high': high}, index=df.index)
+
+    def get_lie(
+        self,
+        df: pd.DataFrame,
+        bouts_length: int,
+    ) -> pd.Series:
+        df = df[['activity', 'y', 'z']].copy()
+        df[['low', 'high']] = self._get_rotational_crossing_points(df)
+        df['lie'] = pd.Series(False, index=df.index, dtype=bool)
+        df['bout'] = (df['activity'] != df['activity'].shift()).cumsum()
+
+        specific_activity = df.loc[
+            df['activity'] == 'sit', 'bout'
+        ]  # NOTE: Activity "sit" needs to be already in the activities dataframe.
+        bout_sizes = specific_activity.value_counts()
+        specific_bouts = bout_sizes[bout_sizes > bouts_length].index.values  # FIXME: Try > or >=
+
+        df['specific'] = False
+        df.loc[df['bout'].isin(specific_bouts), 'specific'] = True
+
+        updated_bouts = (
+            df[df['specific']]
+            .groupby('bout')
+            .aggregate(
+                {
+                    'low': 'any',
+                    'high': 'any',
+                }
+            )
+        )
+        updated_bouts = updated_bouts[updated_bouts['low'] & updated_bouts['high']]
+        df['lie'] = False
+        df.loc[df['bout'].isin(updated_bouts.index), 'lie'] = True
+
+        return df['lie']
+
+    def get_steps(self, df: pd.DataFrame) -> pd.Series:
+        df = df[['activity', 'walk_feature', 'run_feature']].copy()
+        scale = SYSTEM_SF / 2 * np.linspace(0, 1, 256)
+
+        df['steps'] = 0
+        df.loc[df['activity'].isin(['walk', 'stairs']), 'steps'] = df['walk_feature']
+        df.loc[df['activity'] == 'run', 'steps'] = df['run_feature']
+        df['steps'] = scale[df['steps']]
+        df['steps'] = medfilt(df['steps'], 3)
+
+        return df['steps'].astype(np.float32)
+
+    def detect_activities(
+        self, df: pd.DataFrame, references: References | dict[str, Any] | None = None
+    ) -> pd.DataFrame:
+        sf = df['sf'].mode().values[0].item()
+
+        if isinstance(references, dict):
+            references = References(**references)
+        elif references is None:
+            references = References()
+
+        references.remove_outdated(df.index[0])
+
+        df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
+        non_wear = self.get_non_wear(df)
+        bouts = references.get_bouts(non_wear, 'thigh')
+        df, bouts = self.update_df_by_references(df, bouts)
+
+        if self.vendor.lower() == 'sens':
+            self._downsample_sd_correction_for_sens(df, sf)
+
+        df['row'] = self.get_row(df, BOUTS_LENGTH['row'])
+        df['bicycle'] = self.get_bicycle(df, BOUTS_LENGTH['bicycle'])
+        df['stairs'], stairs_threshold = self.get_stairs(df, BOUTS_LENGTH['stairs'])
+        df['run'] = self.get_run(df, BOUTS_LENGTH['run'])
+        df['walk'] = self.get_walk(df, BOUTS_LENGTH['walk'], stairs_threshold)
+        df['stand'] = self.get_stand(df, BOUTS_LENGTH['stand'])
+        df['sit'] = self.get_sit(df, BOUTS_LENGTH['sit'])
+
+        df['activity'] = self._get_activity_column(df)
+        df['activity'] = self._fix_activities_bouts(df, BOUTS_LENGTH)
+
+        df['lie'] = self.get_lie(df, BOUTS_LENGTH['lie'])
+        df.loc[df['lie'], 'activity'] = 'lie'
+
+        for activity in ['sit', 'lie']:
+            df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
+
+        df.loc[non_wear, 'activity'] = 'non-wear'
+        del non_wear
+
+        df['steps'] = self.get_steps(df)
+
+        df.loc[(df['activity'] == 'walk') & (df['steps'] > 2.5), 'activity'] = 'run'
+
+        for activity in ['run', 'walk']:
+            df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
+
+        df.loc[df['activity'] == 'non-wear', 'direction'] = (
+            np.nan
+        )  # NOTE: Should be direction angle removed if non-wear?
+
+        df.rename(columns={'direction': 'thigh_direction'}, inplace=True)
+
+        return df[['activity', 'steps', 'thigh_direction']]
