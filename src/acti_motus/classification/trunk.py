@@ -68,21 +68,6 @@ class Trunk(Sensor):
 
         return df
 
-    def check_upside_down_flip(self, df: pd.DataFrame) -> bool:
-        valid_points = df[(df['inclination'] < 45) | (df['inclination'] > 135)]  # Standing
-
-        if valid_points.empty:
-            logger.warning('Not enough data to check upside down flip. Skipping.')
-            return False
-
-        mdn = np.median(valid_points['x'])
-        flip = True if mdn < 0 else False
-
-        if flip:
-            logger.warning(f'Upside down flip detected (median x: {mdn:.2f}).')
-
-        return flip
-
     def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
         valid_points = df[(df['inclination'] < 45) | (df['inclination'] > 135)]  # Standing
 
@@ -131,6 +116,7 @@ class Trunk(Sensor):
         activities: pd.DataFrame,
         references: References | dict[str, Any] | None = None,
     ) -> pd.DataFrame:
+        activities = activities.copy()
         references = references or References()
 
         # Only keep overlapping data (thigh and trunk)
@@ -139,7 +125,8 @@ class Trunk(Sensor):
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         df['non-wear'] = self.get_non_wear(df)
         bouts = references.get_bouts(df['non-wear'], 'trunk')
-        df, bouts = self.update_df_by_references(df, bouts)
+        df = self.fix_bouts_orientation(df, bouts)
+        df, bouts = self.rotate_bouts_by_reference_angles(df, bouts)
 
         df['backwards'] = self.get_backwards(df)
         df['activity'] = self.fix_lie(df)

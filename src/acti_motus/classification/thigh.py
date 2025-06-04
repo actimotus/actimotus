@@ -45,21 +45,6 @@ class Thigh(Sensor):
 
         return flip
 
-    def check_upside_down_flip(self, df: pd.DataFrame) -> bool:
-        valid_points = df[(df['inclination'] < 45) | (df['inclination'] > 135)]
-
-        if valid_points.empty:
-            logger.warning('Not enough data to check upside down flip. Skipping.')
-            return False
-
-        mdn = np.median(valid_points['x'])
-        flip = True if mdn < 0 else False
-
-        if flip:
-            logger.warning(f'Upside down flip detected (median x: {mdn:.2f}).')
-
-        return flip
-
     def calculate_reference_angle(self, df: pd.DataFrame) -> dict[float, Calculation]:
         x_threshold_lower = 0.1
         x_threshold_upper = 0.72  # NOTE: Originally 0.7. To match the walk.py, 0.72 should be used.
@@ -435,7 +420,8 @@ class Thigh(Sensor):
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         non_wear = self.get_non_wear(df)
         bouts = references.get_bouts(non_wear, 'thigh')
-        df, bouts = self.update_df_by_references(df, bouts)
+        df = self.fix_bouts_orientation(df, bouts)
+        df, bouts = self.rotate_bouts_by_reference_angles(df, bouts)
 
         if self.vendor.lower() == 'sens':
             self._downsample_sd_correction_for_sens(df, sf)
@@ -467,6 +453,13 @@ class Thigh(Sensor):
             df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
 
         df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
-        df.rename(columns={'direction': 'thigh_direction'}, inplace=True)
+        df.rename(
+            columns={
+                'direction': 'thigh_direction',
+                'side_tilt': 'thigh_side_tilt',
+                'inclination': 'thigh_inclination',
+            },
+            inplace=True,
+        )
 
-        return df[['activity', 'steps', 'thigh_direction']]
+        return df[['activity', 'steps', 'thigh_direction', 'thigh_side_tilt', 'thigh_inclination']]

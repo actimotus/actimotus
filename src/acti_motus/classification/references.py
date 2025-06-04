@@ -266,11 +266,13 @@ class References:
 
         return bouts
 
-    def get_bouts(self, non_wear: pd.Series, angle: Literal['thigh', 'trunk']) -> pd.DataFrame:
+    def get_bouts(self, non_wear: pd.Series, angle: Literal['thigh', 'trunk'] | None = None) -> pd.DataFrame:
         bouts = self._get_non_wear_bouts(non_wear)
-        angle = getattr(self, angle, None)
 
-        bouts = angle._update_bout_by_angle(bouts) if isinstance(angle, Angle) else bouts
+        if angle:
+            angle = getattr(self, angle, None)
+            bouts = angle._update_bout_by_angle(bouts) if isinstance(angle, Angle) else bouts
+
         bouts = self._updated_bouts_with_calibrations(bouts) if self.calibrations else bouts
 
         for col in ['angle', 'calibration']:

@@ -160,9 +160,20 @@ class Sensor(ABC):
 
         return df
 
-    @abstractmethod
     def check_upside_down_flip(self, df: pd.DataFrame) -> bool:
-        pass
+        valid_points = df[(df['inclination'] < 45) | (df['inclination'] > 135)]
+
+        if valid_points.empty:
+            logger.warning('Not enough data to check upside down flip. Skipping.')
+            return False
+
+        mdn = np.median(valid_points['x'])
+        flip = True if mdn < 0 else False
+
+        if flip:
+            logger.warning(f'Upside down flip detected (median x: {mdn:.2f}).')
+
+        return flip
 
     @abstractmethod
     def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
@@ -180,7 +191,19 @@ class Sensor(ABC):
     def detect_activities(self, df: pd.DataFrame, references: dict[str, Any] | None = None) -> pd.DataFrame:
         pass
 
-    def update_df_by_references(self, df: pd.DataFrame, bouts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def fix_bouts_orientation(self, df: pd.DataFrame, bouts: pd.DataFrame) -> pd.DataFrame:
+        df = df.copy()
+
+        for start, end, non_wear, angle, calibration in bouts.to_numpy():
+            if not non_wear:
+                bout_df = df[start:end]
+                df.loc[bout_df.index] = self.fix_sensor_orientation(bout_df)
+
+        return df
+
+    def rotate_bouts_by_reference_angles(
+        self, df: pd.DataFrame, bouts: pd.DataFrame
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         df = df.copy()
         bouts = bouts.copy()
         angles = []
@@ -188,7 +211,6 @@ class Sensor(ABC):
 
         for start, end, non_wear, angle, calibration in bouts.to_numpy():
             bout_df = df[start:end]
-            df.loc[bout_df.index] = self.fix_sensor_orientation(bout_df)
 
             if angle:
                 angle.status = AngleStatus.PROPAGATED
