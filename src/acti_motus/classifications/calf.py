@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 import pandas as pd
 
@@ -30,7 +29,7 @@ class Calf(Sensor):
             & (df['inclination'].between(32, 84, inclusive='neither'))
             & (df['inclination'] >= -1.5 * df['thigh_inclination'] + 187)
             & (df['direction'] > 0)
-            & (~df['activity'].isin(['non_wear', 'lie']))
+            & (~df['activity'].isin(['non-wear', 'lie']))
         )
         return squat
 
@@ -38,11 +37,10 @@ class Calf(Sensor):
         self,
         df: pd.DataFrame,
         activities: pd.DataFrame,
-        references: References | dict[str, Any] | None = None,
     ) -> pd.DataFrame:
         activities = activities.copy()
         activities['activity'] = activities['activity'].cat.add_categories(['kneel', 'squat'])
-        references = references or References()
+        references = References()
 
         # Only keep overlapping data (thigh and calf)
         df = df[['x', 'y', 'z', 'sd_x', 'sd_y', 'sd_z']].join(activities, how='inner')

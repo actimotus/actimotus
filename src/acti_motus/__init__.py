@@ -1,8 +1,9 @@
-from .classification import Calf, Thigh, Trunk
+from .classifications import Arm, Calf, Thigh, Trunk
 from .features import Features
 
 __all__ = [
     'Features',
+    'Arm',
     'Calf',
     'Thigh',
     'Trunk',

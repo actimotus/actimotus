@@ -43,7 +43,7 @@ class Sensor(ABC):
             index=df.index,
         )
 
-    def _get_small_bout_max(self, bout, sd_sum):
+    def _get_small_bout_max(self, bout: pd.DataFrame, sd_sum: pd.Series) -> bool:
         start, end, _ = bout
         return sd_sum[start:end].max() > 0.5
 
@@ -58,10 +58,14 @@ class Sensor(ABC):
 
         large_bouts = bout_sizes[bout_sizes > LONG_OFF_BOUTS].index.values
 
+        # FIXME: Small bouts are bottlenecked by the apply function.
         small_bouts = bout_sizes[(bout_sizes <= LONG_OFF_BOUTS) & (bout_sizes > SHORT_OFF_BOUTS)]
         small_bouts = bouts[bouts.isin(small_bouts.index)].drop_duplicates(keep='first').reset_index(drop=False)
         small_bouts.rename(columns={'datetime': 'end', 'non-wear': 'bout'}, inplace=True)
-        small_bouts.insert(0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5))
+        small_bouts['end'] = small_bouts['end'] - pd.Timedelta(seconds=10)  # X seconds before start of short bout
+        small_bouts.insert(
+            0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5)
+        )  # Y seconds before end of short bout
 
         small_bouts['non-wear'] = small_bouts.apply(self._get_small_bout_max, args=(sd_sum,), axis=1)
         small_bouts = small_bouts.loc[small_bouts['non-wear'], 'bout'].values
@@ -269,7 +273,7 @@ class Sensor(ABC):
 
         specific_activity = df.loc[df['activity'] == activity, 'bout']
         bout_sizes = specific_activity.value_counts()
-        short_bouts = bout_sizes[bout_sizes < bouts_length].index.values  # FIXME: Try < or <=
+        short_bouts = bout_sizes[bout_sizes <= bouts_length].index.values
 
         df['short'] = False
         df.loc[df['bout'].isin(short_bouts), 'short'] = True
