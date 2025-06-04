@@ -245,23 +245,6 @@ class Sensor(ABC):
 
         return df, bouts
 
-    def _fix_short_bouts(self, df: pd.DataFrame) -> pd.DataFrame:
-        size = len(df)
-        before = df['activity_before'].values[0]
-        after = df['activity_after'].values[0]
-
-        if size == 1:
-            df['activity'] = after if after else before
-        else:
-            half = size // 2
-            first_half = df.iloc[:half]
-            second_half = df.iloc[half:]
-
-            df.loc[first_half.index, 'activity'] = before
-            df.loc[second_half.index, 'activity'] = after
-
-        return df[['activity']]
-
     def fix_bouts(
         self,
         activities: pd.Series,
@@ -275,17 +258,10 @@ class Sensor(ABC):
         bout_sizes = specific_activity.value_counts()
         short_bouts = bout_sizes[bout_sizes <= bouts_length].index.values
 
-        df['short'] = False
-        df.loc[df['bout'].isin(short_bouts), 'short'] = True
-        df['activity_before'] = df['activity'].shift()
-        df['activity_after'] = df['activity'].shift(-1)
+        df['new_activity'] = df['activity']
+        df.loc[df['bout'].isin(short_bouts), 'new_activity'] = np.nan
 
-        updated_bouts = (
-            df[df['short']]
-            .groupby('bout')
-            .apply(self._fix_short_bouts, include_groups=False)
-            .reset_index(drop=True, level=0)
-        )
-        df.loc[df['short'], 'activity'] = updated_bouts
+        half = len(short_bouts) // 2
+        df['activity'] = df['new_activity'].ffill(limit=half).bfill(limit=half)
 
         return df['activity']

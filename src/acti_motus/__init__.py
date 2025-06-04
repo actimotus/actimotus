@@ -1,5 +1,5 @@
 from .activities import Activities
-from .classifications import Arm, Calf, Thigh, Trunk
+from .classifications import Arm, Calf, References, Thigh, Trunk
 from .features import Features
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     'Thigh',
     'Trunk',
     'Activities',
+    'References',
 ]
