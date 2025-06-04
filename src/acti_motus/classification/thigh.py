@@ -1,33 +1,22 @@
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 from scipy.signal import medfilt
 
-from ..settings import SYSTEM_SF
+from ..settings import BOUTS_LENGTH, SYSTEM_SF
 from .references import References
 from .sensor import Calculation, Sensor
 
 logger = logging.getLogger(__name__)
 
-BOUTS_LENGTH = {
-    'sit': 5,
-    'stand': 2,
-    'move': 2,
-    'walk': 2,
-    'run': 2,
-    'stairs': 5,
-    'bicycle': 15,
-    'row': 15,
-    'lie': 1,
-}
-
 
 @dataclass
 class Thigh(Sensor):
+    vendor: Literal['Sens', 'Other'] = 'Other'
     # rotate: bool = False # TODO: Implement rotation logic first.
 
     def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
@@ -98,15 +87,17 @@ class Thigh(Sensor):
             reference_angle = reference_angle * 0.725 - 5.569  # Correction factor based on RAW data.
 
             if (reference_angle < angle_threshold_lower) or (reference_angle > angle_threshold_upper):
+                reference_angle = default_angle
                 logger.warning(
-                    f'Reference angle {reference_angle:.2f} degrees is outside the threshold range. Using manual reference angle: {default_angle:.2f} degrees.'
+                    f'Reference angle {reference_angle:.2f} degrees is outside the threshold range. Using default reference angle: {reference_angle:.2f} degrees.'
                 )
+
             else:
                 angle_status = Calculation.AUTOMATIC
                 logger.info(f'Reference angle calculated: {reference_angle:.2f} degrees.')
         else:
             reference_angle = default_angle
-            logger.warning(f'No valid walk data found. Using manual reference angle: {default_angle:.2f} degrees.')
+            logger.warning(f'No valid walk data found. Using default reference angle: {reference_angle:.2f} degrees.')
 
         return np.float32(np.radians(reference_angle)).item(), angle_status
 
@@ -414,16 +405,7 @@ class Thigh(Sensor):
         df['specific'] = False
         df.loc[df['bout'].isin(specific_bouts), 'specific'] = True
 
-        updated_bouts = (
-            df[df['specific']]
-            .groupby('bout')
-            .aggregate(
-                {
-                    'low': 'any',
-                    'high': 'any',
-                }
-            )
-        )
+        updated_bouts = df[df['specific']].groupby('bout').aggregate({'low': 'any', 'high': 'any'})
         updated_bouts = updated_bouts[updated_bouts['low'] & updated_bouts['high']]
         df['lie'] = False
         df.loc[df['bout'].isin(updated_bouts.index), 'lie'] = True
@@ -443,16 +425,12 @@ class Thigh(Sensor):
         return df['steps'].astype(np.float32)
 
     def detect_activities(
-        self, df: pd.DataFrame, references: References | dict[str, Any] | None = None
+        self,
+        df: pd.DataFrame,
+        references: References | None = None,
     ) -> pd.DataFrame:
         sf = df['sf'].mode().values[0].item()
-
-        if isinstance(references, dict):
-            references = References(**references)
-        elif references is None:
-            references = References()
-
-        references.remove_outdated(df.index[0])
+        references = references or References()
 
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         non_wear = self.get_non_wear(df)
@@ -485,14 +463,10 @@ class Thigh(Sensor):
         df['steps'] = self.get_steps(df)
 
         df.loc[(df['activity'] == 'walk') & (df['steps'] > 2.5), 'activity'] = 'run'
-
         for activity in ['run', 'walk']:
             df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
 
-        df.loc[df['activity'] == 'non-wear', 'direction'] = (
-            np.nan
-        )  # NOTE: Should be direction angle removed if non-wear?
-
+        df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
         df.rename(columns={'direction': 'thigh_direction'}, inplace=True)
 
         return df[['activity', 'steps', 'thigh_direction']]

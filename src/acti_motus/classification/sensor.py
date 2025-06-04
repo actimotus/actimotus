@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,8 +25,6 @@ class Calculation(Enum):
 
 @dataclass
 class Sensor(ABC):
-    vendor: Literal['Sens', 'Other'] = 'Other'
-
     def get_angles(self, df: pd.DataFrame) -> pd.DataFrame:
         axes = df[['x', 'y', 'z']].to_numpy()
 
@@ -163,19 +161,19 @@ class Sensor(ABC):
         return df
 
     @abstractmethod
-    def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
-        pass
-
-    @abstractmethod
     def check_upside_down_flip(self, df: pd.DataFrame) -> bool:
         pass
 
     @abstractmethod
-    def calculate_reference_angle(self, df: pd.DataFrame) -> tuple[float, Calculation]:
+    def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
         pass
 
     @abstractmethod
     def rotate_by_reference_angle(self, df: pd.DataFrame, angle: float | list[float]) -> pd.DataFrame:
+        pass
+
+    @abstractmethod
+    def calculate_reference_angle(self, df: pd.DataFrame) -> dict[float, Calculation]:
         pass
 
     @abstractmethod
@@ -236,7 +234,7 @@ class Sensor(ABC):
             df.loc[first_half.index, 'activity'] = before
             df.loc[second_half.index, 'activity'] = after
 
-        return df['activity']
+        return df[['activity']]
 
     def fix_bouts(
         self,
