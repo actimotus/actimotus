@@ -31,7 +31,7 @@ class Angle:
 
         return self
 
-    def _update_bout_by_angle(self, bouts: pd.DataFrame) -> pd.DataFrame:
+    def _updated_bouts_by_angle(self, bouts: pd.DataFrame) -> pd.DataFrame:
         if not self.expires:
             return bouts
 
@@ -63,6 +63,13 @@ class Angle:
             return False
         return self.expires < date
 
+    def fix_expiration(self, calibrations: 'Calibration') -> None:
+        for calibration in calibrations:
+            if self.expires and calibration.start < self.expires:
+                self.expires = calibration.start - SECOND
+                logger.info(f'Angle expires adjusted to {self.expires} due to calibration overlap.')
+                break
+
 
 @dataclass
 class Calibration:
@@ -76,7 +83,9 @@ class Calibration:
         self.start = pd.to_datetime(self.start)
         self.end = pd.to_datetime(self.end)
         self.ttl = pd.Timedelta(self.ttl) if self.ttl else None
-        self.expires = pd.to_datetime(self.expires) if self.expires else self.end + self.ttl
+
+        self.expires = pd.to_datetime(self.expires) if self.expires else None
+        self.expires = self.end + self.ttl if self.ttl and not self.expires else self.expires
 
     def is_outdated(self, date: datetime) -> bool:
         """Check if the calibration is outdated based on the given date."""
@@ -113,8 +122,11 @@ class References:
         """Initialize the Angles object."""
         if isinstance(self.thigh, dict):
             self.thigh = Angle(**self.thigh)
+            self.thigh.fix_expiration(self.calibrations)
+
         if isinstance(self.trunk, dict):
             self.trunk = Angle(**self.trunk)
+            self.trunk.fix_expiration(self.calibrations)
 
         return self
 
@@ -169,7 +181,7 @@ class References:
                     bout_start = calibration.start
 
                 # If the calibration angle expires before the wear bout ends, adjust the end time.
-                if calibration.expires < end:
+                if calibration.expires and calibration.expires < end:
                     bout_end = calibration.expires
 
                 calibration_bouts.append(
@@ -271,7 +283,7 @@ class References:
 
         if angle:
             angle = getattr(self, angle, None)
-            bouts = angle._update_bout_by_angle(bouts) if isinstance(angle, Angle) else bouts
+            bouts = angle._updated_bouts_by_angle(bouts) if isinstance(angle, Angle) else bouts
 
         bouts = self._updated_bouts_with_calibrations(bouts) if self.calibrations else bouts
 
@@ -282,3 +294,13 @@ class References:
             bouts[col] = bouts[col].replace(np.nan, None)
 
         return bouts
+
+    def update_angle(self, df: pd.DataFrame, angle: Literal['thigh', 'trunk']) -> None:
+        last_angle = df['angle'].values[-1]
+
+        if not isinstance(last_angle, Angle) or (
+            last_angle.status not in [AngleStatus.PROPAGATED, AngleStatus.CALIBRATION]
+        ):
+            last_angle = None
+
+        setattr(self, angle, last_angle)

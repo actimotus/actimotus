@@ -67,7 +67,7 @@ class Sensor(ABC):
             0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5)
         )  # Y seconds before end of short bout
 
-        small_bouts['non-wear'] = small_bouts.apply(self._get_small_bout_max, args=(sd_sum,), axis=1)
+        small_bouts['non-wear'] = small_bouts.apply(lambda x: self._get_small_bout_max(x, sd_sum), axis=1)
         small_bouts = small_bouts.loc[small_bouts['non-wear'], 'bout'].values
 
         non_wear = bouts.isin(large_bouts) | bouts.isin(small_bouts)

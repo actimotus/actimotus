@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -114,10 +113,9 @@ class Trunk(Sensor):
         self,
         df: pd.DataFrame,
         activities: pd.DataFrame,
-        references: References | dict[str, Any] | None = None,
+        references: References,
     ) -> pd.DataFrame:
         activities = activities.copy()
-        references = references or References()
 
         # Only keep overlapping data (thigh and trunk)
         df = df[['x', 'y', 'z', 'sd_x', 'sd_y', 'sd_z']].join(activities, how='inner')
@@ -141,12 +139,15 @@ class Trunk(Sensor):
         df.rename(
             columns={
                 'inclination': 'trunk_inclination',
+                'side_tilt': 'trunk_side_tilt',
                 'direction': 'trunk_direction',
             },
             inplace=True,
         )
 
-        activities = activities.join(df[['trunk_inclination', 'trunk_direction']], how='left')
+        activities = activities.join(df[['trunk_inclination', 'trunk_side_tilt', 'trunk_direction']], how='left')
         activities.loc[activities.index.isin(df.index), 'activity'] = df['activity']
+
+        references.update_angle(bouts, 'trunk')
 
         return activities

@@ -412,10 +412,9 @@ class Thigh(Sensor):
     def detect_activities(
         self,
         df: pd.DataFrame,
-        references: References | None = None,
+        references: References,
     ) -> pd.DataFrame:
         sf = df['sf'].mode().values[0].item()
-        references = references or References()
 
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         non_wear = self.get_non_wear(df)
@@ -455,11 +454,13 @@ class Thigh(Sensor):
         df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
         df.rename(
             columns={
-                'direction': 'thigh_direction',
-                'side_tilt': 'thigh_side_tilt',
                 'inclination': 'thigh_inclination',
+                'side_tilt': 'thigh_side_tilt',
+                'direction': 'thigh_direction',
             },
             inplace=True,
         )
 
-        return df[['activity', 'steps', 'thigh_direction', 'thigh_side_tilt', 'thigh_inclination']]
+        references.update_angle(bouts, 'thigh')
+
+        return df[['activity', 'steps', 'thigh_inclination', 'thigh_side_tilt', 'thigh_direction']]
