@@ -58,17 +58,18 @@ class Sensor(ABC):
 
         large_bouts = bout_sizes[bout_sizes > LONG_OFF_BOUTS].index.values
 
-        # FIXME: Small bouts are bottlenecked by the apply function.
-        small_bouts = bout_sizes[(bout_sizes <= LONG_OFF_BOUTS) & (bout_sizes > SHORT_OFF_BOUTS)]
-        small_bouts = bouts[bouts.isin(small_bouts.index)].drop_duplicates(keep='first').reset_index(drop=False)
-        small_bouts.rename(columns={'datetime': 'end', 'non-wear': 'bout'}, inplace=True)
-        small_bouts['end'] = small_bouts['end'] - pd.Timedelta(seconds=10)  # X seconds before start of short bout
-        small_bouts.insert(
-            0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5)
-        )  # Y seconds before end of short bout
+        small_bouts = bout_sizes[(bout_sizes <= LONG_OFF_BOUTS) & (bout_sizes > SHORT_OFF_BOUTS)].index.values
 
-        small_bouts['non-wear'] = small_bouts.apply(lambda x: self._get_small_bout_max(x, sd_sum), axis=1)
-        small_bouts = small_bouts.loc[small_bouts['non-wear'], 'bout'].values
+        if small_bouts.size > 0:
+            small_bouts = bouts[bouts.isin(small_bouts)].drop_duplicates(keep='first').reset_index(drop=False)
+            small_bouts.rename(columns={'datetime': 'end', 'non-wear': 'bout'}, inplace=True)
+            small_bouts['end'] = small_bouts['end'] - pd.Timedelta(seconds=10)  # X seconds before start of short bout
+            small_bouts.insert(
+                0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5)
+            )  # Y seconds before end of short bout
+
+            small_bouts['non-wear'] = small_bouts.apply(lambda x: self._get_small_bout_max(x, sd_sum), axis=1)
+            small_bouts = small_bouts.loc[small_bouts['non-wear'], 'bout'].values
 
         non_wear = bouts.isin(large_bouts) | bouts.isin(small_bouts)
 
@@ -104,6 +105,7 @@ class Sensor(ABC):
 
         large_bouts = bout_sizes[bout_sizes > LONG_OFF_BOUTS].index.values
         other_bouts = bout_sizes[bout_sizes <= LONG_OFF_BOUTS].index.values
+
         other = bouts[bouts.isin(other_bouts)]
 
         other_bouts = df.groupby(other)[['inclination', 'side_tilt', 'direction']].apply(self._get_angle_mean)
@@ -262,6 +264,8 @@ class Sensor(ABC):
         df.loc[df['bout'].isin(short_bouts), 'new_activity'] = np.nan
 
         half = len(short_bouts) // 2
+        half = max(half, 1)
+
         df['activity'] = df['new_activity'].ffill(limit=half).bfill(limit=half)
 
         return df['activity']

@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -8,12 +9,12 @@ from numpy.fft import fft as np_fft
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
-from .settings import SYSTEM_SF
+from .settings import (FEATURES, RAW, SENS__FLOAT_FACTOR,
+                       SENS__NORMALIZATION_FACTOR, SYSTEM_SF)
 
 logger = logging.getLogger(__name__)
 
 NYQUIST_FREQ = SYSTEM_SF / 2
-SENS_NORMALIZATION_FACTOR = -4 / 512
 
 
 @dataclass
@@ -37,15 +38,42 @@ class Features:
 
         return sf
 
-    def upsample(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
-        n = len(df)
-        periods = int(SYSTEM_SF * np.fix(n / sampling_frequency))
+    def _legacy_resample(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
+        n_in = len(df)
+        n_out = int(SYSTEM_SF * np.fix(n_in / sampling_frequency))
 
-        datetimes = pd.date_range(start=df.index[0], end=df.index[-1], periods=periods)
+        datetimes = pd.date_range(start=df.index[0], end=df.index[-1], periods=n_out)
         df = pd.DataFrame(
             {col: np.interp(datetimes, df.index, df[col]) for col in df.columns},
             index=datetimes,
         )
+
+        return df
+
+    def _resample_fft(self, df: pd.DataFrame) -> pd.DataFrame:
+        start = df.index[0]
+        end = df.index[-1]
+
+        n_out = np.floor((end - start).total_seconds() * SYSTEM_SF).astype(int)
+        resampled = signal.resample(df, n_out)
+
+        df = pd.DataFrame(
+            resampled,
+            columns=df.columns,
+            index=pd.date_range(start=start, end=end, periods=n_out),
+            dtype=np.float32,
+        )
+
+        return df
+
+    def resample(self, df: pd.DataFrame, sf: float, method: Literal['fft', 'legacy']) -> pd.DataFrame:
+        match method:
+            case 'fft':
+                df = self._resample_fft(df)
+            case 'legacy':
+                df = self._legacy_resample(df, sf)
+            case _:
+                raise ValueError("Method must be one of 'fft' or 'legacy'.")
 
         return df
 
@@ -191,21 +219,28 @@ class Features:
                 raise ValueError(f"Column '{col}' must contain numeric data, but got {df[col].dtype}.")
         return True
 
-    def extract(self, df: pd.DataFrame, validation: bool = True) -> pd.DataFrame:
+    def extract(
+        self,
+        df: pd.DataFrame,
+        method: Literal['fft', 'legacy'] = 'fft',
+        validation: bool = True,
+    ) -> pd.DataFrame:
         if validation:
             self.check_format(df)
 
         sf = self.sampling_frequency or self.get_sampling_frequency(df)
-        df = self.upsample(df, sf)
+        df = self.resample(df, sf, method=method)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
         downsampled = self.downsample(df)
 
+        n = min(len(hl_ratio), len(steps_features), len(downsampled))
         start = df.index[0].ceil('s')
         df = pd.concat([downsampled, hl_ratio, steps_features], axis=1)
+        df = df.iloc[:n]
         df.index = pd.date_range(
             start=start,
-            periods=len(df),
+            periods=n,
             freq=timedelta(seconds=1),
             name='datetime',
         )
@@ -217,31 +252,12 @@ class Features:
         self,
         df: pd.DataFrame,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        float_factor = 1_000_000
-        features = [
-            'x',
-            'y',
-            'z',
-            'sd_x',
-            'sd_y',
-            'sd_z',
-            'sum_x',
-            'sum_z',
-            'sq_sum_x',
-            'sq_sum_z',
-            'sum_dot_xz',
-            'hl_ratio',
-            'walk_feature',
-            'run_feature',
-            'sf',
-        ]
-
         df = df.copy()
         df.index = df.index.astype(np.int64) // 10**6  # Time in milliseconds
         df.drop(columns=['sum_y', 'sq_sum_y'], inplace=True)
 
         df.fillna(0, inplace=True)
-        df[features] = (df[features] * float_factor).astype(np.int32)
+        df[FEATURES] = (df[FEATURES] * SENS__FLOAT_FACTOR).astype(np.int32)
 
         df['data'] = 1
         df['data'] = df['data'].astype(np.int16)
@@ -252,36 +268,35 @@ class Features:
         return (
             df.index.values,
             df['data'].values,
-            df[features].values,
+            df[FEATURES].values,
             df['verbose'].values,
         )
 
-    def _raw_from_server(
+    def _raw_from_sens(
         self,
         timestamps: np.ndarray,
         data: np.ndarray,
-        values: list[str] = ['acc_x', 'acc_y', 'acc_z'],
     ) -> pd.DataFrame:
         df = pd.DataFrame(
             data,
             index=timestamps,
-            columns=values,
+            columns=RAW,
         )
 
-        df = df * SENS_NORMALIZATION_FACTOR
+        df = df * SENS__NORMALIZATION_FACTOR
         df.index = pd.to_datetime(df.index, unit='ms')  # type: ignore
         df.index.name = 'datetime'
 
         return df
 
-    def _df_to_server(
+    def _df_to_sens(
         self,
         df: pd.DataFrame,
     ) -> tuple[
         np.ndarray,
         np.ndarray,
     ]:
-        df = df / SENS_NORMALIZATION_FACTOR
+        df = df / SENS__NORMALIZATION_FACTOR
         timestamps = (df.index.astype(np.int64) // 10**6).values
         timestamps = np.array([timestamps])
 
@@ -290,12 +305,12 @@ class Features:
 
         return timestamps, data
 
-    def sens_extract(
+    def extract_sens(
         self,
         timestamps: np.ndarray,
         data: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        df = self._raw_from_server(timestamps[0], data[0])
-        features = self.extract(df, validation=False)
+        df = self._raw_from_sens(timestamps[0], data[0])
+        features = self.extract(df, method='fft', validation=False)
 
         return self.to_sens(features)

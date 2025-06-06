@@ -153,9 +153,10 @@ class Thigh(Sensor):
     ) -> None:
         values = None
 
-        if math.isclose(sampling_frequency, 25, rel_tol=tolerance):
+        if math.isclose(sampling_frequency, 25, abs_tol=tolerance):
             values = (0.18, 1.03)
-        elif math.isclose(sampling_frequency, 12.5, rel_tol=tolerance):
+
+        elif math.isclose(sampling_frequency, 12.5, abs_tol=tolerance):
             values = (0.02, 1.14)
 
         if values:

@@ -21,9 +21,12 @@ dependencies = [
 dev = [
     "ipykernel>=6.29.5",
     "labda-parsers",
+    "plotly>=6.1.2",
     "pre-commit>=4.2.0",
     "pyinstrument>=5.0.2",
     "ruff>=0.11.11",
+    "kaleido==0.2.1",
+    "marimo>=0.13.15",
 ]
 
 [tool.uv.sources]

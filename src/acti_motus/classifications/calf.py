@@ -43,7 +43,7 @@ class Calf(Sensor):
         references = References()
 
         # Only keep overlapping data (thigh and calf)
-        df = df[['x', 'y', 'z', 'sd_x', 'sd_y', 'sd_z']].join(activities, how='inner')
+        df = df.join(activities, how='inner')
 
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         df['non-wear'] = self.get_non_wear(df)
