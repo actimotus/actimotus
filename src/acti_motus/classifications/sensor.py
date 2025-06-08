@@ -217,7 +217,7 @@ class Sensor(ABC):
         angles = []
         prev_angle_value = None
 
-        for start, end, non_wear, angle, calibration in bouts.to_numpy():
+        for start, end, non_wear, calibration, angle in bouts.to_numpy():
             bout_df = df[start:end]
 
             if angle:

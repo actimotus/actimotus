@@ -1,12 +1,15 @@
 import logging
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 
 from .classifications import Arm, Calf, References, Thigh, Trunk
-from .settings import ACTIVITIES, FEATURES, SENS__ACTIVITY_VALUES, SENS__FLOAT_FACTOR
+from .iterators import DataFrameIterator
+from .settings import (ACTIVITIES, FEATURES, SENS__ACTIVITY_VALUES,
+                       SENS__FLOAT_FACTOR)
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +18,84 @@ logger = logging.getLogger(__name__)
 class Activities:
     vendor: Literal['Sens', 'Other'] = 'Other'
     orientation: bool = True
+    chunks: bool = True
+    size: timedelta = '1d'
+    overlap: timedelta = '15min'
 
-    def detect(
+    def __post_init__(self):
+        if isinstance(self.size, str):
+            self.size = pd.Timedelta(self.size).to_pytimedelta()
+
+        if isinstance(self.overlap, str):
+            self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
+
+    def _detect_chunk(
+        self,
+        thigh: pd.DataFrame,
+        *,
+        trunk: pd.DataFrame | None = None,
+        calf: pd.DataFrame | None = None,
+        arm: pd.DataFrame | None = None,
+        references: dict[str, Any] | None = None,
+    ) -> tuple[pd.DataFrame, References]:
+        start_overlaps, end_overlaps = thigh.index[0], thigh.index[-1]
+
+        not_overlaps = thigh[~thigh['overlap']]
+        start, end = not_overlaps.index[0], not_overlaps.index[-1]
+
+        if trunk is not None:
+            trunk = trunk.loc[(trunk.index >= start) & (trunk.index < end)]
+
+        if calf is not None:
+            calf = calf.loc[(calf.index >= start) & (calf.index < end)]
+
+        if arm is not None:
+            arm = arm.loc[(arm.index >= start) & (arm.index < end)]
+
+        df, references = self._detect(
+            thigh=thigh,
+            trunk=trunk,
+            calf=calf,
+            arm=arm,
+            references=references,
+        )
+
+        df = df.loc[(df.index >= start) & (df.index < end)]
+        logger.info(
+            f'Extracted features for chunk from {start} to {end} (with overlaps from {start_overlaps} to {end_overlaps}).'
+        )
+
+        return df, references
+
+    def _detect_chunks(
+        self,
+        thigh: pd.DataFrame,
+        *,
+        trunk: pd.DataFrame | None = None,
+        calf: pd.DataFrame | None = None,
+        arm: pd.DataFrame | None = None,
+        references: dict[str, Any] | None = None,
+    ) -> tuple[pd.DataFrame, References]:
+        chunks = DataFrameIterator(thigh, size=self.size, overlap=self.overlap)
+
+        output = []
+
+        for chunk in chunks:
+            df, references = self._detect_chunk(
+                chunk,
+                trunk=trunk,
+                calf=calf,
+                arm=arm,
+                references=references,
+            )
+            output.append(df)
+
+        output = pd.concat(output)
+        output.sort_index(inplace=True)
+
+        return output, references
+
+    def _detect(
         self,
         thigh: pd.DataFrame,
         *,
@@ -51,6 +130,32 @@ class Activities:
         references.remove_outdated(activities.index[-1])
 
         return activities, references
+
+    def detect(
+        self,
+        thigh: pd.DataFrame,
+        *,
+        trunk: pd.DataFrame | None = None,
+        calf: pd.DataFrame | None = None,
+        arm: pd.DataFrame | None = None,
+        references: dict[str, Any] | None = None,
+    ) -> tuple[pd.DataFrame, References]:
+        if self.chunks:
+            return self._detect_chunks(
+                thigh=thigh,
+                trunk=trunk,
+                calf=calf,
+                arm=arm,
+                references=references,
+            )
+        else:
+            return self._detect(
+                thigh=thigh,
+                trunk=trunk,
+                calf=calf,
+                arm=arm,
+                references=references,
+            )
 
     def _map_activities(
         self,

@@ -419,6 +419,7 @@ class Thigh(Sensor):
         df: pd.DataFrame,
         references: References,
     ) -> pd.DataFrame:
+        df = df.copy()
         sf = df['sf'].mode().values[0].item()
 
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)

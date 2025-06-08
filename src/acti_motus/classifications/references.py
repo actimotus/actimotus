@@ -67,7 +67,7 @@ class Angle:
         for calibration in calibrations:
             if self.expires and calibration.start < self.expires:
                 self.expires = calibration.start - SECOND
-                logger.info(f'Angle expires adjusted to {self.expires} due to calibration overlap.')
+                logger.info(f'Angle expiration adjusted to {self.expires} due to calibration overlap.')
                 break
 
 
@@ -89,9 +89,7 @@ class Calibration:
 
     def is_outdated(self, date: datetime) -> bool:
         """Check if the calibration is outdated based on the given date."""
-        if self.expires is None:
-            return False
-        return self.expires < date
+        return self.end < date
 
     def get_overlap_in_seconds(self, start: datetime, end: datetime):
         """Calculate the overlap in seconds between the calibration and a given interval."""
@@ -237,12 +235,7 @@ class References:
 
         updated_bouts = []
 
-        for (
-            start,
-            end,
-            non_wear,
-            angle,
-        ) in bouts.to_numpy():
+        for start, end, non_wear, angle in bouts.to_numpy():
             if non_wear:
                 updated_bouts.append({'start': start, 'end': end, 'non-wear': True, 'angle': angle})
 
@@ -258,10 +251,8 @@ class References:
                     updated_bouts.append({'start': start, 'end': end, 'non-wear': False, 'angle': angle})
 
         updated_bouts = pd.DataFrame(updated_bouts)
-        if 'calibration' not in updated_bouts.columns:
-            updated_bouts['calibration'] = None
 
-        return updated_bouts[['start', 'end', 'non-wear', 'angle', 'calibration']]
+        return updated_bouts
 
     def _get_non_wear_bouts(self, non_wear: pd.Series) -> pd.DataFrame:
         bouts = (non_wear != non_wear.shift()).cumsum().to_frame(name='bouts')
@@ -287,13 +278,13 @@ class References:
 
         bouts = self._updated_bouts_with_calibrations(bouts) if self.calibrations else bouts
 
-        for col in ['angle', 'calibration']:
+        for col in ['calibration', 'angle']:
             if col not in bouts.columns:
                 bouts[col] = None
 
             bouts[col] = bouts[col].replace(np.nan, None)
 
-        return bouts
+        return bouts[['start', 'end', 'non-wear', 'calibration', 'angle']]
 
     def update_angle(self, df: pd.DataFrame, angle: Literal['thigh', 'trunk']) -> None:
         last_angle = df['angle'].values[-1]

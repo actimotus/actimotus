@@ -39,6 +39,8 @@ class Calf(Sensor):
         activities: pd.DataFrame,
     ) -> pd.DataFrame:
         activities = activities.copy()
+        df = df.copy()
+
         activities['activity'] = activities['activity'].cat.add_categories(['kneel', 'squat'])
         references = References()
 

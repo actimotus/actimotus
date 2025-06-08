@@ -16,6 +16,8 @@ class Arm(Sensor):
         self,
         df: pd.DataFrame,
     ) -> pd.DataFrame:
+        df = df.copy()
+
         references = References()
 
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)

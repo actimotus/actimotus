@@ -14,7 +14,8 @@ from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
 from .iterators import DataFrameIterator
-from .settings import FEATURES, RAW, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR, SYSTEM_SF
+from .settings import (FEATURES, RAW, SENS__FLOAT_FACTOR,
+                       SENS__NORMALIZATION_FACTOR, SYSTEM_SF)
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ class Features:
 
         if isinstance(self.overlap, str):
             self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
+
+        if self.resample_method not in {'fft', 'legacy'}:
+            raise ValueError("Method must be one of 'fft' or 'legacy'.")
 
     @staticmethod
     def get_sampling_frequency(

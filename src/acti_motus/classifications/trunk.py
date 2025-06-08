@@ -119,6 +119,7 @@ class Trunk(Sensor):
         references: References,
     ) -> pd.DataFrame:
         activities = activities.copy()
+        df = df.copy()
 
         # Only keep overlapping data (thigh and trunk)
         df = df.join(activities, how='inner')
