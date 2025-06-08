@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Activities:
     vendor: Literal['Sens', 'Other'] = 'Other'
-    orientation: bool = True
 
     def detect(
         self,
@@ -25,6 +24,7 @@ class Activities:
         calf: pd.DataFrame | None = None,
         arm: pd.DataFrame | None = None,
         references: dict[str, Any] | None = None,
+        orientation: bool = True,
     ) -> tuple[pd.DataFrame, References]:
         if thigh.empty:
             raise ValueError('Thigh data is empty. Please provide valid thigh data.')
@@ -32,21 +32,19 @@ class Activities:
         references = references or References()  # type: References
         references.remove_outdated(thigh.index[0])
 
-        activities = Thigh(vendor=self.vendor, orientation=self.orientation).detect_activities(
-            thigh, references=references
-        )
+        activities = Thigh(vendor=self.vendor, orientation=orientation).detect_activities(thigh, references=references)
         logger.info('Detected activities for thigh.')
 
         if isinstance(trunk, pd.DataFrame) and not trunk.empty:
-            activities = Trunk(orientation=self.orientation).detect_activities(trunk, activities, references=references)
+            activities = Trunk(orientation=orientation).detect_activities(trunk, activities, references=references)
             logger.info('Detected activities for trunk.')
 
         if isinstance(calf, pd.DataFrame) and not calf.empty:
-            activities = Calf(orientation=self.orientation).detect_activities(calf, activities)
+            activities = Calf(orientation=orientation).detect_activities(calf, activities)
             logger.info('Detected activities for calf.')
 
         if isinstance(arm, pd.DataFrame) and not arm.empty:
-            activities = activities.join(Arm(orientation=self.orientation).detect_activities(arm), how='left')
+            activities = activities.join(Arm(orientation=orientation).detect_activities(arm), how='left')
             logger.info('Detected activities for arm.')
 
         references.remove_outdated(activities.index[-1])

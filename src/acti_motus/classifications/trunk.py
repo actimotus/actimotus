@@ -77,6 +77,9 @@ class Trunk(Sensor):
         mdn = np.median(valid_points['direction'])
         flip = False if mdn > 0 else True
 
+        if flip:
+            logger.warning(f'Inside out flip detected (median z: {mdn:.2f}).')
+
         return flip
 
     def get_backwards(self, df: pd.DataFrame) -> pd.Series:
