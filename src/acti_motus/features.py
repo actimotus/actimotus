@@ -1,7 +1,10 @@
 import logging
 import math
+import multiprocessing as mp
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
+from multiprocessing.pool import ThreadPool as Pool
 from typing import Literal
 
 import numpy as np
@@ -10,6 +13,7 @@ from numpy.fft import fft as np_fft
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
+from .iterators import DataFrameIterator
 from .settings import (FEATURES, RAW, SENS__FLOAT_FACTOR,
                        SENS__NORMALIZATION_FACTOR, SYSTEM_SF)
 
@@ -21,6 +25,24 @@ NYQUIST_FREQ = SYSTEM_SF / 2
 @dataclass
 class Features:
     sampling_frequency: float | None = None
+    validation: bool = True
+    chunks: bool = True
+    size: timedelta = '1d'
+    overlap: timedelta = '15min'
+    multithread: int = 'max'
+    resample_method: Literal['fft', 'legacy'] = 'fft'
+
+    def __post_init__(self):
+        self.multithread = mp.cpu_count() if self.multithread == 'max' else int(self.multithread)
+
+        if self.multithread < 1:
+            raise ValueError('Number of cores must be at least 1.')
+
+        if isinstance(self.size, str):
+            self.size = pd.Timedelta(self.size).to_pytimedelta()
+
+        if isinstance(self.overlap, str):
+            self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
 
     @staticmethod
     def get_sampling_frequency(
@@ -67,14 +89,12 @@ class Features:
 
         return df
 
-    def resample(
-        self, df: pd.DataFrame, sampling_frequency: float, method: Literal['fft', 'legacy'], tolerance=1
-    ) -> pd.DataFrame:
+    def resample(self, df: pd.DataFrame, sampling_frequency: float, tolerance=1) -> pd.DataFrame:
         if math.isclose(sampling_frequency, SYSTEM_SF, abs_tol=tolerance):
             logger.info(f'Sampling frequency is {SYSTEM_SF} Hz, no resampling needed.')
             return df
 
-        match method:
+        match self.resample_method:
             case 'fft':
                 df = self._resample_fft(df)
             case 'legacy':
@@ -226,17 +246,48 @@ class Features:
                 raise ValueError(f"Column '{col}' must contain numeric data, but got {df[col].dtype}.")
         return True
 
-    def extract(
+    def _extract_chunk(
         self,
         df: pd.DataFrame,
-        method: Literal['fft', 'legacy'] = 'fft',
-        validation: bool = True,
     ) -> pd.DataFrame:
-        if validation:
+        start_overlaps, end_overlaps = df.index[0], df.index[-1]
+
+        not_overlaps = df[~df['overlap']]
+        start, end = not_overlaps.index[0], not_overlaps.index[0]
+
+        df = self._extract(
+            df[['acc_x', 'acc_y', 'acc_z']],
+        )
+        df = df.loc[(df.index >= start) & (df.index < end)]
+        logger.info(
+            f'Extracted features for chunk from {start} to {end} (with overlaps from {start_overlaps} to {end_overlaps}).'
+        )
+
+        return df
+
+    def _extract_chunks(self, df: pd.DataFrame) -> pd.DataFrame:
+        chunks = DataFrameIterator(df, size=self.size, overlap=self.overlap)
+
+        with Pool(self.multithread) as pool:
+            output = pool.map(
+                partial(self._extract_chunk),
+                chunks,
+            )
+
+        output = pd.concat(output)
+        output.sort_index(inplace=True)
+
+        return output
+
+    def _extract(
+        self,
+        df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        if self.validation:
             self.check_format(df)
 
         sf = self.sampling_frequency or self.get_sampling_frequency(df)
-        df = self.resample(df, sf, method=method)
+        df = self.resample(df, sf)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
         downsampled = self.downsample(df)
@@ -254,6 +305,15 @@ class Features:
         df['sf'] = sf
 
         return df
+
+    def extract(
+        self,
+        df: pd.DataFrame,
+    ) -> pd.DataFrame:
+        if self.chunks:
+            return self._extract_chunks(df)
+        else:
+            return self._extract(df)
 
     def to_sens(
         self,
