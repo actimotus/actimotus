@@ -41,21 +41,21 @@ class Angle:
         for start, end, non_wear in bouts.to_numpy():
             if non_wear:
                 angle = None
-                updated_bouts.append({'start': start, 'end': end, 'non-wear': True, 'angle': angle})
+                updated_bouts.append({'start': start, 'end': end, 'non_wear': True, 'angle': angle})
 
             else:
                 # If the angle expires in the bout, split the bout, else keep it as is.
                 if self.expires > start and self.expires < end:
-                    updated_bouts.append({'start': start, 'end': self.expires, 'non-wear': False, 'angle': angle})
+                    updated_bouts.append({'start': start, 'end': self.expires, 'non_wear': False, 'angle': angle})
                     angle = None
                     updated_bouts.append(
-                        {'start': self.expires + SECOND, 'end': end, 'non-wear': False, 'angle': angle}
+                        {'start': self.expires + SECOND, 'end': end, 'non_wear': False, 'angle': angle}
                     )
 
                 else:
-                    updated_bouts.append({'start': start, 'end': end, 'non-wear': False, 'angle': angle})
+                    updated_bouts.append({'start': start, 'end': end, 'non_wear': False, 'angle': angle})
 
-        return pd.DataFrame(updated_bouts)[['start', 'end', 'non-wear', 'angle']]
+        return pd.DataFrame(updated_bouts)
 
     def is_expired(self, date: datetime) -> bool:
         """Check if the angle is expired based on the given date."""
@@ -186,7 +186,7 @@ class References:
                     {
                         'start': bout_start,
                         'end': bout_end,
-                        'non-wear': False,
+                        'non_wear': False,
                         'calibration': calibration,
                     }
                 )
@@ -208,7 +208,7 @@ class References:
                     {
                         'start': new_start,
                         'end': calibration_bout['start'] - SECOND,
-                        'non-wear': False,
+                        'non_wear': False,
                         'angle': angle,
                     }
                 )
@@ -220,7 +220,7 @@ class References:
                 {
                     'start': new_start,
                     'end': end,
-                    'non-wear': False,
+                    'non_wear': False,
                 }
             )
 
@@ -237,7 +237,7 @@ class References:
 
         for start, end, non_wear, angle in bouts.to_numpy():
             if non_wear:
-                updated_bouts.append({'start': start, 'end': end, 'non-wear': True, 'angle': angle})
+                updated_bouts.append({'start': start, 'end': end, 'non_wear': True, 'angle': angle})
 
             else:
                 if self.calibrations:
@@ -246,9 +246,9 @@ class References:
                         new_bouts = self._fill_bout_gaps(calibration_bouts, start, end, angle)
                         updated_bouts.extend(new_bouts)
                     else:
-                        updated_bouts.append({'start': start, 'end': end, 'non-wear': False, 'angle': angle})
+                        updated_bouts.append({'start': start, 'end': end, 'non_wear': False, 'angle': angle})
                 else:
-                    updated_bouts.append({'start': start, 'end': end, 'non-wear': False, 'angle': angle})
+                    updated_bouts.append({'start': start, 'end': end, 'non_wear': False, 'angle': angle})
 
         updated_bouts = pd.DataFrame(updated_bouts)
 
@@ -256,14 +256,14 @@ class References:
 
     def _get_non_wear_bouts(self, non_wear: pd.Series) -> pd.DataFrame:
         bouts = (non_wear != non_wear.shift()).cumsum().to_frame(name='bouts')
-        bouts['non-wear'] = non_wear
+        bouts['non_wear'] = non_wear
         bouts = (
             bouts.reset_index()
             .groupby('bouts')
             .agg(
                 start=('datetime', 'first'),
                 end=('datetime', 'last'),
-                non_wear=('non-wear', 'first'),
+                non_wear=('non_wear', 'first'),
             )
         )
 
@@ -284,7 +284,7 @@ class References:
 
             bouts[col] = bouts[col].replace(np.nan, None)
 
-        return bouts[['start', 'end', 'non-wear', 'calibration', 'angle']]
+        return bouts[['start', 'end', 'non_wear', 'calibration', 'angle']]
 
     def update_angle(self, df: pd.DataFrame, angle: Literal['thigh', 'trunk']) -> None:
         last_angle = df['angle'].values[-1]
