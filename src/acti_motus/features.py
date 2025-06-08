@@ -1,4 +1,5 @@
 import logging
+import math
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Literal
@@ -66,12 +67,18 @@ class Features:
 
         return df
 
-    def resample(self, df: pd.DataFrame, sf: float, method: Literal['fft', 'legacy']) -> pd.DataFrame:
+    def resample(
+        self, df: pd.DataFrame, sampling_frequency: float, method: Literal['fft', 'legacy'], tolerance=1
+    ) -> pd.DataFrame:
+        if math.isclose(sampling_frequency, SYSTEM_SF, abs_tol=tolerance):
+            logger.info(f'Sampling frequency is {SYSTEM_SF} Hz, no resampling needed.')
+            return df
+
         match method:
             case 'fft':
                 df = self._resample_fft(df)
             case 'legacy':
-                df = self._legacy_resample(df, sf)
+                df = self._legacy_resample(df, sampling_frequency)
             case _:
                 raise ValueError("Method must be one of 'fft' or 'legacy'.")
 

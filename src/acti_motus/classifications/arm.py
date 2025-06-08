@@ -23,7 +23,9 @@ class Arm(Sensor):
         # TODO: Is non-wear detection correct for arm? Produces non-wear times even if the arm is worn most probably.
         df['non-wear'] = self.get_non_wear(df)
         bouts = references.get_bouts(df['non-wear'])
-        df = self.fix_bouts_orientation(df, bouts)
+
+        if self.orientation:
+            df = self.fix_bouts_orientation(df, bouts)
 
         df.loc[df['non-wear'], 'inclination'] = np.nan
         df.rename(columns={'inclination': 'arm_inclination'}, inplace=True)

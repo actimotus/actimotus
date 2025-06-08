@@ -48,7 +48,9 @@ class Calf(Sensor):
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         df['non-wear'] = self.get_non_wear(df)
         bouts = references.get_bouts(df['non-wear'])
-        df = self.fix_bouts_orientation(df, bouts)
+
+        if self.orientation:
+            df = self.fix_bouts_orientation(df, bouts)
 
         df['kneel'] = self.get_kneeling(df)
         df['squat'] = self.get_squatting(df)

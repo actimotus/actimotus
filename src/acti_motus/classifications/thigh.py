@@ -220,6 +220,10 @@ class Thigh(Sensor):
         valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (df['direction'] < 25)
 
         valid = df.loc[valid, 'direction']
+
+        if valid.empty:
+            raise ValueError('No valid data found for stairs threshold calculation.')
+
         valid = stairs_threshold + np.median(valid)  # type: ignore
         return valid.item()
 
@@ -420,7 +424,10 @@ class Thigh(Sensor):
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         non_wear = self.get_non_wear(df)
         bouts = references.get_bouts(non_wear, 'thigh')
-        df = self.fix_bouts_orientation(df, bouts)
+
+        if self.orientation:
+            df = self.fix_bouts_orientation(df, bouts)
+
         df, bouts = self.rotate_bouts_by_reference_angles(df, bouts)
 
         if self.vendor.lower() == 'sens':

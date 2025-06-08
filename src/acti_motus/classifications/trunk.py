@@ -123,7 +123,10 @@ class Trunk(Sensor):
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         df['non-wear'] = self.get_non_wear(df)
         bouts = references.get_bouts(df['non-wear'], 'trunk')
-        df = self.fix_bouts_orientation(df, bouts)
+
+        if self.orientation:
+            df = self.fix_bouts_orientation(df, bouts)
+
         df, bouts = self.rotate_bouts_by_reference_angles(df, bouts)
 
         df['backwards'] = self.get_backwards(df)
