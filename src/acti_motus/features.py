@@ -14,8 +14,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
 from .iterators import DataFrameIterator
-from .settings import (FEATURES, RAW, SENS__FLOAT_FACTOR,
-                       SENS__NORMALIZATION_FACTOR, SYSTEM_SF)
+from .settings import FEATURES, RAW, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR, SYSTEM_SF
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +252,7 @@ class Features:
         start_overlaps, end_overlaps = df.index[0], df.index[-1]
 
         not_overlaps = df[~df['overlap']]
-        start, end = not_overlaps.index[0], not_overlaps.index[0]
+        start, end = not_overlaps.index[0], not_overlaps.index[-1]
 
         df = self._extract(
             df[['acc_x', 'acc_y', 'acc_z']],

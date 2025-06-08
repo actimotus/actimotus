@@ -41,7 +41,7 @@ class DataFrameIterator:
         start = df.index.min()
         end = df.index.max()
 
-        chunks = pd.date_range(start=start, end=end, freq=size, normalize=True).to_frame(index=False, name='start')
+        chunks = pd.date_range(start=start, end=end, freq=size, normalize=False).to_frame(index=False, name='start')
         chunks.index.name = 'chunk'
         chunks['end'] = chunks['start'] + size
         chunks.iat[0, 0] = start
@@ -53,6 +53,12 @@ class DataFrameIterator:
         return chunks
 
     def _load_chunk(self, chunk: int) -> pd.DataFrame:
+        if len(self.chunks) == 1:
+            df = self.df.copy()
+            df['overlap'] = False
+
+            return df
+
         chunk = self.chunks.iloc[chunk]
         start, end = chunk['start'], chunk['end']
         start_overlap, end_overlap = chunk['start_overlap'], chunk['end_overlap']
