@@ -5,10 +5,26 @@ build-backend = "hatchling.build"
 [project]
 name = "acti-motus"
 version = "0.1.0"
-description = "Add your description here"
+description = "Python-powered activity detection algorithms that build upon Acti4, processing data from multiple accelerometers with a required thigh sensor."
 readme = "README.md"
 authors = [
-    { name = "Josef Heidler", email = "heidlerjosef@gmail.com" }
+    {name = "Josef Heidler", email = "heidlerjosef@gmail.com"},
+    {name = "Jon Roslyng Larsen", email = "xjla@nfa.dk"},
+    {name = "Sebastian Asmussen Sode Hørlück", email = "ssh@nfa.dk"},
+]
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+keywords = ["accelerometers", "activity", "classification", "sensors", "movement-behavior"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    'Operating System :: OS Independent',
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
 ]
 requires-python = ">=3.11"
 dependencies = [
@@ -16,6 +32,12 @@ dependencies = [
     "pandas>=2.2.3",
     "pyarrow>=20.0.0",
 ]
+
+[project.urls]
+Homepage = 'https://github.com/acti-motus/acti-motus'
+Documentation = 'https://github.com/acti-motus/acti-motus'
+Source = 'https://github.com/acti-motus/acti-motus'
+Changelog = 'https://github.com/acti-motus/acti-motus/blob/main/CHANGELOG.md'
 
 [dependency-groups]
 dev = [

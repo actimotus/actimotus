@@ -1,13 +1,11 @@
 from .activities import Activities
-from .classifications import Arm, Calf, References, Thigh, Trunk
+from .classifications import References
+from .exposures import Exposures
 from .features import Features
 
 __all__ = [
+    'Exposures',
     'Features',
-    'Arm',
-    'Calf',
-    'Thigh',
-    'Trunk',
     'Activities',
     'References',
 ]
