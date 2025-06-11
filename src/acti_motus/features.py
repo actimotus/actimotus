@@ -14,8 +14,8 @@ from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
 from .iterators import DataFrameIterator
-from .settings import (FEATURES, RAW, SENS__FLOAT_FACTOR,
-                       SENS__NORMALIZATION_FACTOR, SYSTEM_SF)
+from .logger import traceable_logging
+from .settings import FEATURES, RAW, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR, SYSTEM_SF
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +26,11 @@ NYQUIST_FREQ = SYSTEM_SF / 2
 class Features:
     sampling_frequency: float | None = None
     validation: bool = True
-    chunks: bool = True
+    chunks: bool = False
     size: timedelta = '1d'
     overlap: timedelta = '15min'
     multithread: int = 'max'
-    resample_method: Literal['fft', 'legacy'] = 'fft'
+    resample: Literal['fft', 'legacy'] = 'fft'
 
     def __post_init__(self):
         self.multithread = mp.cpu_count() if self.multithread == 'max' else int(self.multithread)
@@ -44,7 +44,7 @@ class Features:
         if isinstance(self.overlap, str):
             self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
 
-        if self.resample_method not in {'fft', 'legacy'}:
+        if self.resample not in {'fft', 'legacy'}:
             raise ValueError("Method must be one of 'fft' or 'legacy'.")
 
     @staticmethod
@@ -60,7 +60,7 @@ class Features:
 
         sf = (1 / np.mean(np.diff(time.astype(int) / 1e9))).item()
 
-        logging.info(f'Detected sampling frequency: {sf:.2f} Hz.')
+        logging.info(f'Detected sampling frequency: {sf:.2f} Hz.', extra={'sampling_frequency': sf})
 
         return sf
 
@@ -92,12 +92,15 @@ class Features:
 
         return df
 
-    def resample(self, df: pd.DataFrame, sampling_frequency: float, tolerance=1) -> pd.DataFrame:
+    def resampling(self, df: pd.DataFrame, sampling_frequency: float, tolerance=1) -> pd.DataFrame:
         if math.isclose(sampling_frequency, SYSTEM_SF, abs_tol=tolerance):
-            logger.info(f'Sampling frequency is {SYSTEM_SF} Hz, no resampling needed.')
+            logger.info(
+                f'Sampling frequency is {SYSTEM_SF} Hz, no resampling needed.',
+                extra={'sampling_frequency': sampling_frequency},
+            )
             return df
 
-        match self.resample_method:
+        match self.resample:
             case 'fft':
                 df = self._resample_fft(df)
             case 'legacy':
@@ -190,7 +193,7 @@ class Features:
         )
         return tensor[:, :-1, :]
 
-    def downsample(self, df: pd.DataFrame) -> pd.DataFrame:
+    def downsampling(self, df: pd.DataFrame) -> pd.DataFrame:
         axes = df.values
 
         b, a = signal.butter(4, 5 / NYQUIST_FREQ, 'low')
@@ -253,7 +256,7 @@ class Features:
         self,
         df: pd.DataFrame,
     ) -> pd.DataFrame:
-        start_overlaps, end_overlaps = df.index[0], df.index[-1]
+        start_overlap, end_overlap = df.index[0], df.index[-1]
 
         not_overlaps = df[~df['overlap']]
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
@@ -263,7 +266,8 @@ class Features:
         )
         df = df.loc[(df.index >= start) & (df.index < end)]
         logger.info(
-            f'Extracted features for chunk from {start} to {end} (with overlaps from {start_overlaps} to {end_overlaps}).'
+            f'Features extracted from chunk: {start} to {end}.',
+            extra={'start': start, 'end': end, 'overlap_start': start_overlap, 'overlap_end': end_overlap},
         )
 
         return df
@@ -290,10 +294,10 @@ class Features:
             self.check_format(df)
 
         sf = self.sampling_frequency or self.get_sampling_frequency(df)
-        df = self.resample(df, sf)
+        df = self.resampling(df, sf)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
-        downsampled = self.downsample(df)
+        downsampled = self.downsampling(df)
 
         n = min(len(hl_ratio), len(steps_features), len(downsampled))
         start = df.index[0].ceil('s')
@@ -309,6 +313,7 @@ class Features:
 
         return df
 
+    @traceable_logging
     def extract(
         self,
         df: pd.DataFrame,

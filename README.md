@@ -23,7 +23,7 @@
 </div>
 
 <div align="center">
-  <p style="font-style: italic">Developed by the Danish <a href="https://nfa.dk/en">National Research Center for Working Environment (NRCWE)</a> in collaboration with <a href="https://www.sens.dk/en/">SENS Innovation ApS</a></p>
+  <p style="font-style: italic;">Developed by the Danish <a href="https://nfa.dk/en">National Research Center for Working Environment (NRCWE)</a> in collaboration with <a href="https://www.sens.dk/en/">SENS Innovation ApS</a></p>
 </div>
 
 

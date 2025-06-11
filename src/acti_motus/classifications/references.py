@@ -128,6 +128,28 @@ class References:
 
         return self
 
+    @classmethod
+    def from_dict(cls, references: dict[str, Any]) -> Self:
+        """Create a References object from a dictionary."""
+        if references is None:
+            logger.info('No references provided, returning empty References object.')
+            return cls()
+
+        return cls(**references)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the References object to a dictionary."""
+        references = {}
+
+        if self.calibrations:
+            references['calibrations'] = [cal.__dict__ for cal in self.calibrations]
+        if self.thigh:
+            references['thigh'] = self.thigh.__dict__
+        if self.trunk:
+            references['trunk'] = self.trunk.__dict__
+
+        return references
+
     def sort_calibrations(self):
         """Sort calibrations by start time."""
         self.calibrations.sort(key=lambda x: x.start)

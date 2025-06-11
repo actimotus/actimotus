@@ -8,8 +8,8 @@ import pandas as pd
 
 from .classifications import Arm, Calf, References, Thigh, Trunk
 from .iterators import DataFrameIterator
-from .settings import (ACTIVITIES, FEATURES, SENS__ACTIVITY_VALUES,
-                       SENS__FLOAT_FACTOR)
+from .logger import traceable_logging
+from .settings import ACTIVITIES, FEATURES, SENS__ACTIVITY_VALUES, SENS__FLOAT_FACTOR
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class Activities:
     vendor: Literal['Sens', 'Other'] = 'Other'
     orientation: bool = True
-    chunks: bool = True
+    chunks: bool = False
     size: timedelta = '1d'
     overlap: timedelta = '15min'
 
@@ -98,17 +98,14 @@ class Activities:
     def _detect(
         self,
         thigh: pd.DataFrame,
+        references: References,
         *,
         trunk: pd.DataFrame | None = None,
         calf: pd.DataFrame | None = None,
         arm: pd.DataFrame | None = None,
-        references: dict[str, Any] | None = None,
     ) -> tuple[pd.DataFrame, References]:
         if thigh.empty:
             raise ValueError('Thigh data is empty. Please provide valid thigh data.')
-
-        references = references or References()  # type: References
-        references.remove_outdated(thigh.index[0])
 
         activities = Thigh(vendor=self.vendor, orientation=self.orientation).detect_activities(
             thigh, references=references
@@ -131,6 +128,7 @@ class Activities:
 
         return activities, references
 
+    @traceable_logging
     def detect(
         self,
         thigh: pd.DataFrame,
@@ -139,9 +137,13 @@ class Activities:
         calf: pd.DataFrame | None = None,
         arm: pd.DataFrame | None = None,
         references: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> tuple[pd.DataFrame, References]:
+        references = References.from_dict(references)  # type: References
+        references.remove_outdated(thigh.index[0])
+
         if self.chunks:
-            return self._detect_chunks(
+            activities, references = self._detect_chunks(
                 thigh=thigh,
                 trunk=trunk,
                 calf=calf,
@@ -149,13 +151,15 @@ class Activities:
                 references=references,
             )
         else:
-            return self._detect(
+            activities, references = self._detect(
                 thigh=thigh,
                 trunk=trunk,
                 calf=calf,
                 arm=arm,
                 references=references,
             )
+
+        return activities, references.to_dict()
 
     def _map_activities(
         self,
