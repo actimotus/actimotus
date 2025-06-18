@@ -14,7 +14,7 @@ authors = [
 ]
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
-keywords = ["accelerometers", "activity", "classification", "sensors", "movement-behavior"]
+keywords = ["accelerometers", "activity-classification", "movement-behavior"]
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",

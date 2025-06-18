@@ -1,29 +1,29 @@
 <h1 align="center">
   <a href="https://github.com/acti-motus/acti-motus">
-    <img src="docs/acti-motus.png" alt="Acti-Motus Logo" height="128px">
+    <img src="https://github.com/acti-motus/acti-motus/blob/main/docs/acti-motus.png?raw=true" alt="Acti-Motus Logo" height="128px">
   </a>
 </h1>
 
 <div align="center">
-  <a href="#">
-    <img src="#" alt="PyPi Latest Release"/>
+  <a href="https://pypi.org/project/acti-motus/">
+    <img src="https://img.shields.io/pypi/v/acti-motus" alt="PyPi Latest Release"/>
   </a>
-  <a href="#">
-    <img src="#" alt="Python Versions"/>
+  <a href="https://pypi.org/project/acti-motus/">
+    <img src="https://img.shields.io/pypi/pyversions/acti-motus.svg" alt="Python Versions"/>
   </a>
-  <a href="#">
-    <img src="#" alt="Monthly Downloads"/>
+  <a href="https://pepy.tech/projects/acti-motus">
+    <img src="https://static.pepy.tech/badge/acti-motus/month" alt="Monthly Downloads"/>
   </a>
   <a href="#">
     <img src="#" alt="DOI Latest Release"/>
   </a>
-  <a href="#">
-    <img src="#" alt="License"/>
+  <a href="https://github.com/acti-motus/acti-motus/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/acti-motus/acti-motus.svg" alt="License"/>
   </a>
 </div>
 
 <div align="center">
-  <p style="font-style: italic;">Developed by the Danish <a href="https://nfa.dk/en">National Research Center for Working Environment (NRCWE)</a> in collaboration with <a href="https://www.sens.dk/en/">SENS Innovation ApS</a></p>
+  <p>Developed by the Danish <a href="https://nfa.dk/en">National Research Center for Working Environment (NRCWE)</a> in collaboration with <a href="https://www.sens.dk/en/">SENS Innovation ApS</a></p>
 </div>
 
 
@@ -69,12 +69,12 @@ print(activities)
 
 exposures = Exposures().generate(df)
 print(exposures)
-#>                           non_wear          sedentary           standing            walking
+#>                                    sedentary           standing            walking
 #> datetime  
-#> 2024-09-02 00:00:00+00:00   0 days    0 days 09:12:21    0 days 04:34:03    0 days 01:26:00
-#> 2024-09-03 00:00:00+00:00   0 days    0 days 17:05:21    0 days 04:11:19    0 days 01:30:02
-#> 2024-09-04 00:00:00+00:00   0 days    0 days 18:26:01    0 days 04:05:18    0 days 00:46:19
-#> 2024-09-05 00:00:00+00:00   0 days    0 days 04:47:29    0 days 00:59:53    0 days 00:08:28
+#> 2024-09-02 00:00:00+00:00    0 days 09:12:21    0 days 04:34:03    0 days 01:26:00
+#> 2024-09-03 00:00:00+00:00    0 days 17:05:21    0 days 04:11:19    0 days 01:30:02
+#> 2024-09-04 00:00:00+00:00    0 days 18:26:01    0 days 04:05:18    0 days 00:46:19
+#> 2024-09-05 00:00:00+00:00    0 days 04:47:29    0 days 00:59:53    0 days 00:08:28
 ```
 
 Detailed information on Acti-Motus processing and features is available [here](#).

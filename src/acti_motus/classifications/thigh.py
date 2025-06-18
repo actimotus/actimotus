@@ -155,16 +155,18 @@ class Thigh(Sensor):
 
         if math.isclose(sampling_frequency, 25, abs_tol=tolerance):
             values = (0.18, 1.03)
+            correction = 25
 
         elif math.isclose(sampling_frequency, 12.5, abs_tol=tolerance):
             values = (0.02, 1.14)
+            correction = 12.5
 
         if values:
             df[['sd_x', 'sd_y', 'sd_z']] = df[['sd_x', 'sd_y', 'sd_z']].apply(
                 lambda x: values[0] * x**2 + values[1] * x
             )
             logger.info(
-                f'Applied SD correction which is specific for Sens sensors [{values[0]} * x^2 + {values[1]} * x] for {sampling_frequency:.2f} Hz.'
+                f'Applied SD correction [{values[0]} * x^2 + {values[1]} * x] which is specific for Sens sensors at {correction:.1f} Hz ({sampling_frequency:.2f} Hz).'
             )
         else:
             logger.warning(f'No correction applied for sampling frequency {sampling_frequency:.2f} Hz on axes.')

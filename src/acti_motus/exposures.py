@@ -48,23 +48,24 @@ class Exposures:
 
         return valid
 
-    def get_fast_walking(
-        self,
-        df: pd.DataFrame,
-        steps_per_minute: int = 120,
-    ) -> pd.Series:
-        walking = (df['activity'] == 'walk') & (df['steps'] >= steps_per_minute / 60)
-        fast_walking = walking
+    def get_fast_walking(self, df: pd.DataFrame) -> pd.Series:
+        return (df['activity'] == 'walk') & (df['steps'] >= 120 / 60)
 
-        return fast_walking
+    def get_slow_walking(self, df: pd.DataFrame) -> pd.Series:
+        return (df['activity'] == 'walk') & (df['steps'] < 120 / 60)
 
     def _get_exposures(self, df: pd.DataFrame) -> pd.Series:
         exposure = {
-            'non_wear': self._get_exposure(df, df['activity'] == 'non_wear', 'time'),
+            'wear': self._get_exposure(df, df['activity'] != 'non_wear', 'time'),
             'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'time'),
             'standing': self._get_exposure(df, df['activity'].isin(['stand', 'move']), 'time'),
-            'walking': self._get_exposure(df, df['activity'].isin(['walk']), 'time'),
+            'on_feet': self._get_exposure(df, df['activity'].isin(['stand', 'move', 'walk', 'runk', 'stairs']), 'time'),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'count'),
+            'lpa': self._get_exposure(
+                df,
+                df['activity'].isin(['stand', 'move']) | self.get_slow_walking(df),
+                'time',
+            ),
             'mvpa': self._get_exposure(
                 df,
                 df['activity'].isin(['run', 'stairs', 'bicycle', 'row']) | self.get_fast_walking(df),
