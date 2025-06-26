@@ -386,6 +386,6 @@ class Features:
         data: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         df = self._raw_from_sens(timestamps[0], data[0])
-        features = self.extract(df, method='fft', validation=False)
+        features = self.extract(df)
 
         return self.to_sens(features)

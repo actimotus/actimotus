@@ -18,11 +18,24 @@
             "level": "INFO",
             "formatter": "console",
             "stream": "ext://sys.stdout",
-            "filters": ["id"]
+            "filters": [
+                "id"
+            ]
+        }
+    },
+    "loggers": {
+        "acti_motus": {
+            "level": "INFO",
+            "handlers": [
+                "console"
+            ],
+            "propagate": false
         }
     },
     "root": {
-        "level": "INFO",
-        "handlers": ["console"]
+        "level": "WARNING",
+        "handlers": [
+            "console"
+        ]
     }
 }

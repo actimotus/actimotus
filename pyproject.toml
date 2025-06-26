@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "acti-motus"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python-powered activity detection algorithms that build upon Acti4, processing data from multiple accelerometers with a required thigh sensor."
 readme = "README.md"
 authors = [
