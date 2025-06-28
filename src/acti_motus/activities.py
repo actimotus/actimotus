@@ -38,8 +38,6 @@ class Activities:
         arm: pd.DataFrame | None = None,
         references: dict[str, Any] | None = None,
     ) -> tuple[pd.DataFrame, References]:
-        start_overlaps, end_overlaps = thigh.index[0], thigh.index[-1]
-
         not_overlaps = thigh[~thigh['overlap']]
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
 
@@ -61,9 +59,6 @@ class Activities:
         )
 
         df = df.loc[(df.index >= start) & (df.index < end)]
-        logger.info(
-            f'Extracted features for chunk from {start} to {end} (with overlaps from {start_overlaps} to {end_overlaps}).'
-        )
 
         return df, references
 

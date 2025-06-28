@@ -1,3 +1,4 @@
+import importlib.util
 import logging
 import math
 import multiprocessing as mp
@@ -5,7 +6,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
 from multiprocessing.pool import ThreadPool as Pool
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -31,6 +32,7 @@ class Features:
     overlap: timedelta = '15min'
     multithread: int = 'max'
     resample: Literal['fft', 'legacy'] = 'fft'
+    calibrate: bool = False
 
     def __post_init__(self):
         self.multithread = mp.cpu_count() if self.multithread == 'max' else int(self.multithread)
@@ -46,6 +48,11 @@ class Features:
 
         if self.resample not in {'fft', 'legacy'}:
             raise ValueError("Method must be one of 'fft' or 'legacy'.")
+
+        if self.calibrate and importlib.util.find_spec('labda_accelerometers') is None:
+            raise ImportError(
+                "AutoCalibrate is not available. Please install 'labda-accelerometers' package to use calibration."
+            )
 
     @staticmethod
     def get_sampling_frequency(
@@ -255,29 +262,25 @@ class Features:
     def _extract_chunk(
         self,
         df: pd.DataFrame,
+        **kwargs: Any,
     ) -> pd.DataFrame:
-        start_overlap, end_overlap = df.index[0], df.index[-1]
-
         not_overlaps = df[~df['overlap']]
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
 
         df = self._extract(
             df[['acc_x', 'acc_y', 'acc_z']],
+            **kwargs,
         )
         df = df.loc[(df.index >= start) & (df.index < end)]
-        logger.info(
-            f'Features extracted from chunk: {start} to {end}.',
-            extra={'start': start, 'end': end, 'overlap_start': start_overlap, 'overlap_end': end_overlap},
-        )
 
         return df
 
-    def _extract_chunks(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _extract_chunks(self, df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         chunks = DataFrameIterator(df, size=self.size, overlap=self.overlap)
 
         with Pool(self.multithread) as pool:
             output = pool.map(
-                partial(self._extract_chunk),
+                partial(self._extract_chunk, **kwargs),
                 chunks,
             )
 
@@ -286,14 +289,23 @@ class Features:
 
         return output
 
+    @traceable_logging
     def _extract(
         self,
         df: pd.DataFrame,
+        **kwargs: Any,
     ) -> pd.DataFrame:
         if self.validation:
             self.check_format(df)
 
         sf = self.sampling_frequency or self.get_sampling_frequency(df)
+
+        if self.calibrate:
+            from labda_accelerometers import AutoCalibrate
+
+            df = AutoCalibrate(min_hours=12, sampling_frequency=sf).calibrate(df)
+            logger.info('Calibration applied to DataFrame.')
+
         df = self.resampling(df, sf)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
@@ -310,18 +322,19 @@ class Features:
             name='datetime',
         )
         df['sf'] = sf
+        logger.info('Features extracted.')
 
         return df
 
-    @traceable_logging
     def extract(
         self,
         df: pd.DataFrame,
+        **kwargs: Any,
     ) -> pd.DataFrame:
         if self.chunks:
-            return self._extract_chunks(df)
+            return self._extract_chunks(df, **kwargs)
         else:
-            return self._extract(df)
+            return self._extract(df, **kwargs)
 
     def to_sens(
         self,

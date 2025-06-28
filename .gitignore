@@ -175,3 +175,6 @@ cython_debug/
 
 # Custom
 temp
+validations/**/*.parquet
+validations/**/*.csv
+validations/**/*.png

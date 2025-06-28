@@ -67,5 +67,4 @@ def setup_logging(config: Path):
     with config.open('r') as f:
         config = json.load(f)
 
-    config.setdefault('disable_existing_loggers', False)
     logging.config.dictConfig(config)
