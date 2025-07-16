@@ -43,7 +43,7 @@ Changelog = 'https://github.com/acti-motus/acti-motus/blob/main/CHANGELOG.md'
 dev = [
     "altair[save]>=5.5.0",
     "ipykernel>=6.29.5",
-    "labda-parsers",
+    
     "plotly>=6.1.2",
     "pre-commit>=4.2.0",
     "pyinstrument>=5.0.2",
@@ -52,7 +52,8 @@ dev = [
     "marimo>=0.13.15",
     "nbformat>=5.10.4",
     "python-json-logger>=3.3.0",
-    "labda-accelerometers>=0.1.1",
+    "labda-parsers",
+    "labda-accelerometers",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -65,6 +66,7 @@ include = [
 
 [tool.uv.sources]
 labda-parsers = { path = "../labda-parsers", editable = true }
+labda-accelerometers = { path = "../labda-accel", editable = true }
 
 [tool.ruff.lint]
 pydocstyle = { convention = 'google' }

@@ -32,7 +32,7 @@ class Features:
     overlap: timedelta = '15min'
     multithread: int = 'max'
     resample: Literal['fft', 'legacy'] = 'fft'
-    calibrate: bool = False
+    calibrate: bool | timedelta = False
 
     def __post_init__(self):
         self.multithread = mp.cpu_count() if self.multithread == 'max' else int(self.multithread)
@@ -49,9 +49,14 @@ class Features:
         if self.resample not in {'fft', 'legacy'}:
             raise ValueError("Method must be one of 'fft' or 'legacy'.")
 
-        if self.calibrate and importlib.util.find_spec('labda_accelerometers') is None:
-            raise ImportError(
-                "AutoCalibrate is not available. Please install 'labda-accelerometers' package to use calibration."
+        if self.calibrate:
+            if importlib.util.find_spec('labda_accelerometers') is None:
+                raise ImportError(
+                    "AutoCalibrate is not available. Please install 'labda-accelerometers' package to use calibration."
+                )
+
+            self.calibrate = (
+                self.size if isinstance(self.calibrate, bool) else pd.Timedelta(self.calibrate).to_pytimedelta()
             )
 
     @staticmethod
@@ -303,8 +308,9 @@ class Features:
         if self.calibrate:
             from labda_accelerometers import AutoCalibrate
 
-            df = AutoCalibrate(min_hours=12, sampling_frequency=sf).calibrate(df)
-            logger.info('Calibration applied to DataFrame.')
+            df = AutoCalibrate(min_hours=int(self.calibrate.total_seconds() // 3600), sampling_frequency=sf).calibrate(
+                df
+            )
 
         df = self.resampling(df, sf)
         hl_ratio = self.get_hl_ratio(df)

@@ -44,7 +44,7 @@ dev = [
     { name = "altair", extras = ["save"], specifier = ">=5.5.0" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "kaleido", specifier = "==0.2.1" },
-    { name = "labda-accelerometers", specifier = ">=0.1.1" },
+    { name = "labda-accelerometers", editable = "../labda-accel" },
     { name = "labda-parsers", editable = "../labda-parsers" },
     { name = "marimo", specifier = ">=0.13.15" },
     { name = "nbformat", specifier = ">=5.10.4" },
@@ -748,7 +748,7 @@ wheels = [
 [[package]]
 name = "labda-accelerometers"
 version = "0.1.1"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../labda-accel" }
 dependencies = [
     { name = "agcounts" },
     { name = "numba" },
@@ -756,9 +756,24 @@ dependencies = [
     { name = "resampy" },
     { name = "scikit-digital-health" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/24/65/d1f7e66eb716adacbbe8688e714f313fd2be2f09a20cec16d7347174d0a5/labda_accelerometers-0.1.1.tar.gz", hash = "sha256:91050e66ed640df4acb9bcfccee9e40aebf4dc13b6bcb5cb83769d7e5550d824", size = 6028820 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/66/edec7dd6673f161b0a6bdbafbf6b0d5673f1f1c9cfd099f9528e1dedcc85/labda_accelerometers-0.1.1-py3-none-any.whl", hash = "sha256:8f860b8ac2a2db04574fd708467b2230203a19a8654ddbb54c8d29e6cb1306b7", size = 9307 },
+
+[package.metadata]
+requires-dist = [
+    { name = "agcounts", specifier = ">=0.2.6" },
+    { name = "numba", specifier = ">=0.61.2" },
+    { name = "pandas", specifier = ">=2.2.3" },
+    { name = "resampy", specifier = ">=0.4.3" },
+    { name = "scikit-digital-health", specifier = ">=0.17.9" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "labda-parsers", editable = "../labda-parsers" },
+    { name = "pre-commit", specifier = ">=4.2.0" },
+    { name = "pyarrow", specifier = ">=20.0.0" },
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "scipy", specifier = ">=1.15.3" },
 ]
 
 [[package]]
