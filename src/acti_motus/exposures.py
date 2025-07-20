@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import pandas as pd
+from .settings import ACTIVITIES
 
 
 @dataclass
@@ -56,7 +57,7 @@ class Exposures:
 
     def _get_exposures(self, df: pd.DataFrame) -> pd.Series:
         exposure = {
-            'wear': self._get_exposure(df, df['activity'] != 'non_wear', 'time'),
+            'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
             'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'time'),
             'standing': self._get_exposure(df, df['activity'].isin(['stand', 'move']), 'time'),
             'on_feet': self._get_exposure(df, df['activity'].isin(['stand', 'move', 'walk', 'runk', 'stairs']), 'time'),
@@ -87,10 +88,22 @@ class Exposures:
 
         return exposure
 
-    def generate(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _get_activities(self, df: pd.DataFrame) -> pd.DataFrame:
+        columns = ACTIVITIES.values()
+        columns = [col for col in columns if col in df["activity"].cat.categories]
+        columns.remove('non-wear')
+        activities = df["activity"].groupby([pd.Grouper(freq=self.window, sort=True), df["activity"]], observed=False).count()
+        activities = activities.apply(pd.Timedelta, unit="s").unstack()
+        return activities[columns]
+
+    def generate(self, df: pd.DataFrame, activities: bool = False) -> pd.DataFrame:
         if not self.window:
             exposure = pd.DataFrame(self._get_exposures(df)).T
         else:
             exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)
+
+        if activities:
+            activities = self._get_activities(df)
+            exposure = pd.concat([exposure, activities], axis=1)
 
         return exposure

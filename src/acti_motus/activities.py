@@ -8,7 +8,6 @@ import pandas as pd
 
 from .classifications import Arm, Calf, References, Thigh, Trunk
 from .iterators import DataFrameIterator
-from .logger import traceable_logging
 from .settings import ACTIVITIES, FEATURES, SENS__ACTIVITY_VALUES, SENS__FLOAT_FACTOR
 
 logger = logging.getLogger(__name__)
@@ -123,7 +122,6 @@ class Activities:
 
         return activities, references
 
-    @traceable_logging
     def detect(
         self,
         thigh: pd.DataFrame,

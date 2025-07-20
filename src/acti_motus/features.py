@@ -15,7 +15,6 @@ from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
 from .iterators import DataFrameIterator
-from .logger import traceable_logging
 from .settings import FEATURES, RAW, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR, SYSTEM_SF
 
 logger = logging.getLogger(__name__)
@@ -242,7 +241,7 @@ class Features:
 
         return df
 
-    def check_format(self, df: pd.DataFrame) -> bool:
+    def check_format(self, df: pd.DataFrame) -> pd.DataFrame:
         if not isinstance(df, pd.DataFrame):
             raise TypeError('Input must be a pandas DataFrame.')
 
@@ -262,7 +261,8 @@ class Features:
         for col in required_columns:
             if not pd.api.types.is_numeric_dtype(df[col]):
                 raise ValueError(f"Column '{col}' must contain numeric data, but got {df[col].dtype}.")
-        return True
+
+        return df[['acc_x', 'acc_y', 'acc_z']]
 
     def _extract_chunk(
         self,
@@ -294,14 +294,16 @@ class Features:
 
         return output
 
-    @traceable_logging
     def _extract(
         self,
         df: pd.DataFrame,
         **kwargs: Any,
     ) -> pd.DataFrame:
         if self.validation:
-            self.check_format(df)
+            df = self.check_format(df)
+
+        df = df.iloc[:, :3]
+        df.columns = ['acc_x', 'acc_y', 'acc_z']
 
         sf = self.sampling_frequency or self.get_sampling_frequency(df)
 
