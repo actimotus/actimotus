@@ -28,7 +28,7 @@ class Activities:
         if isinstance(self.overlap, str):
             self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
 
-    def _detect_chunk(
+    def _compute_chunk(
         self,
         thigh: pd.DataFrame,
         *,
@@ -49,7 +49,7 @@ class Activities:
         if arm is not None:
             arm = arm.loc[(arm.index >= start) & (arm.index < end)]
 
-        df, references = self._detect(
+        df, references = self._compute(
             thigh=thigh,
             trunk=trunk,
             calf=calf,
@@ -61,7 +61,7 @@ class Activities:
 
         return df, references
 
-    def _detect_chunks(
+    def _compute_chunks(
         self,
         thigh: pd.DataFrame,
         *,
@@ -75,7 +75,7 @@ class Activities:
         output = []
 
         for chunk in chunks:
-            df, references = self._detect_chunk(
+            df, references = self._compute_chunk(
                 chunk,
                 trunk=trunk,
                 calf=calf,
@@ -89,7 +89,7 @@ class Activities:
 
         return output, references
 
-    def _detect(
+    def _compute(
         self,
         thigh: pd.DataFrame,
         references: References,
@@ -101,28 +101,30 @@ class Activities:
         if thigh.empty:
             raise ValueError('Thigh data is empty. Please provide valid thigh data.')
 
-        activities = Thigh(vendor=self.vendor, orientation=self.orientation).detect_activities(
+        activities = Thigh(vendor=self.vendor, orientation=self.orientation).compute_activities(
             thigh, references=references
         )
         logger.info('Detected activities for thigh.')
 
         if isinstance(trunk, pd.DataFrame) and not trunk.empty:
-            activities = Trunk(orientation=self.orientation).detect_activities(trunk, activities, references=references)
+            activities = Trunk(orientation=self.orientation).compute_activities(
+                trunk, activities, references=references
+            )
             logger.info('Detected activities for trunk.')
 
         if isinstance(calf, pd.DataFrame) and not calf.empty:
-            activities = Calf(orientation=self.orientation).detect_activities(calf, activities)
+            activities = Calf(orientation=self.orientation).compute_activities(calf, activities)
             logger.info('Detected activities for calf.')
 
         if isinstance(arm, pd.DataFrame) and not arm.empty:
-            activities = activities.join(Arm(orientation=self.orientation).detect_activities(arm), how='left')
+            activities = activities.join(Arm(orientation=self.orientation).compute_activities(arm), how='left')
             logger.info('Detected activities for arm.')
 
         references.remove_outdated(activities.index[-1])
 
         return activities, references
 
-    def detect(
+    def compute(
         self,
         thigh: pd.DataFrame,
         *,
@@ -136,7 +138,7 @@ class Activities:
         references.remove_outdated(thigh.index[0])
 
         if self.chunks:
-            activities, references = self._detect_chunks(
+            activities, references = self._compute_chunks(
                 thigh=thigh,
                 trunk=trunk,
                 calf=calf,
@@ -144,7 +146,7 @@ class Activities:
                 references=references,
             )
         else:
-            activities, references = self._detect(
+            activities, references = self._compute(
                 thigh=thigh,
                 trunk=trunk,
                 calf=calf,
@@ -240,7 +242,7 @@ class Activities:
 
         return thigh, trunk, calf, arm
 
-    def detect_sens(
+    def compute_sens(
         self,
         timestamps: np.ndarray,
         data: np.ndarray,
@@ -248,6 +250,6 @@ class Activities:
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         thigh, trunk, calf, arm = self._raw_from_sens(timestamps, data)
 
-        df, references = self.detect(thigh=thigh, trunk=trunk, calf=calf, arm=arm, references=references)
+        df, references = self.compute(thigh=thigh, trunk=trunk, calf=calf, arm=arm, references=references)
 
         return self.to_sens(df, references)

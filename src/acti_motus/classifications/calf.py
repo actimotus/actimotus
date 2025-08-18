@@ -33,7 +33,7 @@ class Calf(Sensor):
         )
         return squat
 
-    def detect_activities(
+    def compute_activities(
         self,
         df: pd.DataFrame,
         activities: pd.DataFrame,

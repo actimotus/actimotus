@@ -37,7 +37,7 @@ Python-powered activity detection algorithms that build upon [Acti4](https://git
 - Detects activities: lying, sitting, standing, walking, stair climbing, and bicycling
 - An optional back-worn sensor enhances lying and sitting detection
 - A calf-worn sensor detects squatting and kneeling
-- Python | Multi-threaded
+- Python
 
 See [documentation](#) for more details.
 
@@ -58,8 +58,8 @@ print(df)
 #> 2024-09-02 08:08:50.307000+00:00  0.257812    -0.203125    -0.937500
 #> 2024-09-02 08:08:50.387000+00:00  0.242188    -0.226562    -0.953125
 
-features = Features().extract(df)
-acivities, references = Activities().detect(features)
+features = Features().compute(df)
+acivities, references = Activities().compute(features)
 print(activities)
 #>                           activity  steps
 #> datetime  
@@ -67,7 +67,7 @@ print(activities)
 #> 2024-09-02 08:08:52+00:00      sit    0.0
 #> 2024-09-02 08:08:53+00:00      sit    0.0
 
-exposures = Exposures().generate(df)
+exposures = Exposures().compute(df)
 print(exposures)
 #>                                    sedentary           standing            walking
 #> datetime  

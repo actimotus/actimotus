@@ -2,7 +2,6 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -59,7 +58,6 @@ class Sensor(ABC):
         bout_sizes = bouts[non_wear].value_counts()
 
         large_bouts = bout_sizes[bout_sizes > LONG_OFF_BOUTS].index.values
-
         small_bouts = bout_sizes[(bout_sizes <= LONG_OFF_BOUTS) & (bout_sizes > SHORT_OFF_BOUTS)].index.values
 
         if small_bouts.size > 0:
@@ -89,11 +87,11 @@ class Sensor(ABC):
 
         return non_wear
 
-    def _get_angle_mean(self, df: pd.DataFrame) -> pd.Series:
+    def _get_angle_mean(self, df: pd.DataFrame) -> bool:
         mean = df.mean(axis=0)
 
-        rule_1 = (abs(mean - [90, 0, 90]) < DEGREES_TOLERANCE).all()
-        rule_2 = (abs(mean - [90, 0, -90]) < DEGREES_TOLERANCE).all()
+        rule_1 = (abs(mean - [90, 0, 90]) < DEGREES_TOLERANCE).all().astype(bool)
+        rule_2 = (abs(mean - [90, 0, -90]) < DEGREES_TOLERANCE).all().astype(bool)
 
         return rule_1 or rule_2
 
@@ -111,11 +109,15 @@ class Sensor(ABC):
         other = bouts[bouts.isin(other_bouts)]
 
         other_bouts = df.groupby(other)[['inclination', 'side_tilt', 'direction']].apply(self._get_angle_mean)
+        other_bouts = other_bouts[
+            other_bouts
+        ].index.values  # FIXME: Should this use FALSE or TRUE bouts from _get_angle_mean?
+
         non_wear = bouts.isin(large_bouts) | bouts.isin(other_bouts)
 
         return non_wear
 
-    def get_non_wear(self, df: pd.DataFrame) -> pd.Series | pd.DataFrame:
+    def get_non_wear(self, df: pd.DataFrame) -> pd.Series:
         non_wear = self._fix_off_bouts(df)
         non_wear = self._fix_on_bouts(non_wear)
         non_wear = self._fix_off_bouts_angles(non_wear, df)
@@ -144,7 +146,7 @@ class Sensor(ABC):
         df = df.copy()
         upside_down = self.check_upside_down_flip(df)
         inside_out = self.check_inside_out_flip(df)
-        columns = None
+        columns, text = None, None
 
         if upside_down and inside_out:
             columns = ['x', 'z', 'sum_x', 'sum_z', 'sum_dot_xz', 'direction']
@@ -195,17 +197,13 @@ class Sensor(ABC):
     def calculate_reference_angle(self, df: pd.DataFrame) -> dict[float, Calculation]:
         pass
 
-    @abstractmethod
-    def detect_activities(self, df: pd.DataFrame, references: dict[str, Any] | None = None) -> pd.DataFrame:
-        pass
-
     def fix_bouts_orientation(self, df: pd.DataFrame, bouts: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
 
         for start, end, non_wear, angle, calibration in bouts.to_numpy():
             if not non_wear:
                 bout_df = df[start:end]
-                df.loc[bout_df.index] = self.fix_sensor_orientation(bout_df)
+                df.loc[df.index.isin(bout_df.index)] = self.fix_sensor_orientation(bout_df)
 
         return df
 

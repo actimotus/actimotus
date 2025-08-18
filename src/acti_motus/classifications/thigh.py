@@ -223,11 +223,15 @@ class Thigh(Sensor):
 
         valid = df.loc[valid, 'direction']
 
+        # FIXME: Maybe get different threshold if no valid data is found.
         if valid.empty:
-            raise ValueError('No valid data found for stairs threshold calculation.')
+            logger.warning('No valid data found for stairs threshold calculation. Using default stairs threshold.')
+            valid = stairs_threshold
+        else:
+            valid = stairs_threshold + np.median(valid)  # type: ignore
+            valid = valid.item()
 
-        valid = stairs_threshold + np.median(valid)  # type: ignore
-        return valid.item()
+        return valid
 
     def get_stairs(
         self,
@@ -416,7 +420,7 @@ class Thigh(Sensor):
 
         return df['steps'].astype(np.float32)
 
-    def detect_activities(
+    def compute_activities(
         self,
         df: pd.DataFrame,
         references: References,

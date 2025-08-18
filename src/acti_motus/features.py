@@ -1,11 +1,8 @@
 import importlib.util
 import logging
 import math
-import multiprocessing as mp
 from dataclasses import dataclass
 from datetime import timedelta
-from functools import partial
-from multiprocessing.pool import ThreadPool as Pool
 from typing import Any, Literal
 
 import numpy as np
@@ -29,16 +26,10 @@ class Features:
     chunks: bool = False
     size: timedelta = '1d'
     overlap: timedelta = '15min'
-    multithread: int = 'max'
     resample: Literal['fft', 'legacy'] = 'fft'
     calibrate: bool | timedelta = False
 
     def __post_init__(self):
-        self.multithread = mp.cpu_count() if self.multithread == 'max' else int(self.multithread)
-
-        if self.multithread < 1:
-            raise ValueError('Number of cores must be at least 1.')
-
         if isinstance(self.size, str):
             self.size = pd.Timedelta(self.size).to_pytimedelta()
 
@@ -62,7 +53,7 @@ class Features:
     def get_sampling_frequency(
         df: pd.DataFrame,
         *,
-        samples: int | None = 5_000,
+        samples: int | None = 30_000,
     ) -> float:
         time = df.index
 
@@ -248,23 +239,21 @@ class Features:
         if df.empty:
             raise ValueError('DataFrame cannot be empty.')
 
-        required_columns = {'acc_x', 'acc_y', 'acc_z'}
-        if not required_columns.issubset(df.columns):
-            missing_cols = required_columns - set(df.columns)
+        if df.shape[1] != 3:
             raise ValueError(
-                f'DataFrame must contain columns: {list(required_columns)}. Missing: {list(missing_cols)}.'
+                f'DataFrame must have exactly 3 columns for accelerometer data, but has {df.shape[1]} columns.'
             )
 
         if not pd.api.types.is_datetime64_any_dtype(df.index):
             raise ValueError(f'DataFrame index must be of datetime type, but got {df.index.dtype}.')
 
-        for col in required_columns:
+        for col in df.columns:
             if not pd.api.types.is_numeric_dtype(df[col]):
                 raise ValueError(f"Column '{col}' must contain numeric data, but got {df[col].dtype}.")
 
-        return df[['acc_x', 'acc_y', 'acc_z']]
+        return df
 
-    def _extract_chunk(
+    def _compute_chunk(
         self,
         df: pd.DataFrame,
         **kwargs: Any,
@@ -272,29 +261,27 @@ class Features:
         not_overlaps = df[~df['overlap']]
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
 
-        df = self._extract(
-            df[['acc_x', 'acc_y', 'acc_z']],
+        df = self._compute(
+            df,
             **kwargs,
         )
         df = df.loc[(df.index >= start) & (df.index < end)]
 
         return df
 
-    def _extract_chunks(self, df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
+    def _compute_chunks(self, df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         chunks = DataFrameIterator(df, size=self.size, overlap=self.overlap)
+        computed = []
 
-        with Pool(self.multithread) as pool:
-            output = pool.map(
-                partial(self._extract_chunk, **kwargs),
-                chunks,
-            )
+        for chunk in chunks:
+            computed.append(self._compute_chunk(chunk, **kwargs))
 
-        output = pd.concat(output)
-        output.sort_index(inplace=True)
+        computed = pd.concat(computed)
+        computed.sort_index(inplace=True)
 
-        return output
+        return computed
 
-    def _extract(
+    def _compute(
         self,
         df: pd.DataFrame,
         **kwargs: Any,
@@ -330,19 +317,19 @@ class Features:
             name='datetime',
         )
         df['sf'] = sf
-        logger.info('Features extracted.')
+        logger.info('Features computed.')
 
         return df
 
-    def extract(
+    def compute(
         self,
         df: pd.DataFrame,
         **kwargs: Any,
     ) -> pd.DataFrame:
         if self.chunks:
-            return self._extract_chunks(df, **kwargs)
+            return self._compute_chunks(df, **kwargs)
         else:
-            return self._extract(df, **kwargs)
+            return self._compute(df, **kwargs)
 
     def to_sens(
         self,
@@ -401,12 +388,12 @@ class Features:
 
         return timestamps, data
 
-    def extract_sens(
+    def compute_sens(
         self,
         timestamps: np.ndarray,
         data: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         df = self._raw_from_sens(timestamps[0], data[0])
-        features = self.extract(df)
+        features = self.compute(df)
 
         return self.to_sens(features)

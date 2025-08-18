@@ -112,7 +112,7 @@ class Trunk(Sensor):
 
         return valid['activity']
 
-    def detect_activities(
+    def compute_activities(
         self,
         df: pd.DataFrame,
         activities: pd.DataFrame,

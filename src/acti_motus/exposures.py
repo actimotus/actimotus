@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import pandas as pd
+
 from .settings import ACTIVITIES
 
 
@@ -90,13 +91,15 @@ class Exposures:
 
     def _get_activities(self, df: pd.DataFrame) -> pd.DataFrame:
         columns = ACTIVITIES.values()
-        columns = [col for col in columns if col in df["activity"].cat.categories]
+        columns = [col for col in columns if col in df['activity'].cat.categories]
         columns.remove('non-wear')
-        activities = df["activity"].groupby([pd.Grouper(freq=self.window, sort=True), df["activity"]], observed=False).count()
-        activities = activities.apply(pd.Timedelta, unit="s").unstack()
+        activities = (
+            df['activity'].groupby([pd.Grouper(freq=self.window, sort=True), df['activity']], observed=False).count()
+        )
+        activities = activities.apply(pd.Timedelta, unit='s').unstack()
         return activities[columns]
 
-    def generate(self, df: pd.DataFrame, activities: bool = False) -> pd.DataFrame:
+    def compute(self, df: pd.DataFrame, activities: bool = False) -> pd.DataFrame:
         if not self.window:
             exposure = pd.DataFrame(self._get_exposures(df)).T
         else:

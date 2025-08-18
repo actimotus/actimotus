@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Arm(Sensor):
-    def detect_activities(
+    def compute_activities(
         self,
         df: pd.DataFrame,
     ) -> pd.DataFrame:
