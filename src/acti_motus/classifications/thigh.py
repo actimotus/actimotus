@@ -20,6 +20,7 @@ class Thigh(Sensor):
     # rotate: bool = False # TODO: Implement rotation logic first.
 
     def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
+        # TODO: Check that this works correctly.
         rows_per_hour = SYSTEM_SF * 60 * 2
         window = rows_per_hour * 3
         step = rows_per_hour
@@ -28,10 +29,10 @@ class Thigh(Sensor):
         inclination = df['inclination']
         z = df['z']
 
-        valid_windows = inclination.rolling(window=window, step=step, min_periods=min_periods).quantile(0.02) <= 45
+        invalid_windows = inclination.rolling(window=window, step=step, min_periods=min_periods).quantile(0.02) > 45
 
-        valid_points_mask = pd.Series(df.index.map(valid_windows), index=df.index, dtype='boolean').ffill()
-        valid_points = z.loc[valid_points_mask & (inclination > 45)]
+        invalid_points_mask = pd.Series(df.index.map(invalid_windows), index=df.index, dtype='boolean').ffill()
+        valid_points = z.loc[~invalid_points_mask & (inclination > 45)]
 
         if valid_points.empty:
             logger.warning('Not enough data to check inside out flip. Skipping.')

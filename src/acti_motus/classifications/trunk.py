@@ -72,7 +72,7 @@ class Trunk(Sensor):
 
         if valid_points.empty:
             logger.warning('Not enough data to check inside out flip. Skipping.')
-            return False, None
+            return False
 
         mdn = np.median(valid_points['direction'])
         flip = False if mdn > 0 else True
