@@ -111,7 +111,7 @@ def process_motus(
             df = rotate_by_90_degrees_over_x(df)
 
         extracted_features = features.compute(df)
-        activity, references = activities.compute(extracted_features, orientation=True)
+        activity, references = activities.compute(extracted_features)
 
         df = ground_truth.join(activity, how='left')
         df.dropna(subset=['activity'], inplace=True)

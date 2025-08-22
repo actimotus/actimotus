@@ -8,7 +8,7 @@ from .settings import ACTIVITIES
 
 @dataclass
 class Exposures:
-    window: timedelta | None = '1d'
+    window: str | timedelta = '1d'
 
     def __post_init__(self):
         if isinstance(self.window, str):
@@ -20,7 +20,9 @@ class Exposures:
             result = pd.Timedelta(result, unit='s')
         elif function == 'count':
             transitions = valid & ~(valid.shift(-1, fill_value=False))
-            result = transitions.sum().item()
+            result = transitions.sum()
+        else:
+            raise ValueError(f'Unknown function: {function}')
 
         return result
 
@@ -95,20 +97,18 @@ class Exposures:
         columns = ACTIVITIES.values()
         columns = [col for col in columns if col in df['activity'].cat.categories]
         columns.remove('non-wear')
+
         activities = (
-            df['activity'].groupby([pd.Grouper(freq=self.window, sort=True), df['activity']], observed=False).count()
+            df['activity'].groupby([pd.Grouper(freq=self.window, sort=True), df['activity']], observed=False).count()  # type: ignore
         )
         activities = activities.apply(pd.Timedelta, unit='s').unstack()
         return activities[columns]
 
     def compute(self, df: pd.DataFrame, activities: bool = False) -> pd.DataFrame:
-        if not self.window:
-            exposure = pd.DataFrame(self._get_exposures(df)).T
-        else:
-            exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)
+        exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
 
         if activities:
-            activities = self._get_activities(df)
-            exposure = pd.concat([exposure, activities], axis=1)
+            df = self._get_activities(df)
+            exposure = pd.concat([exposure, df], axis=1)
 
         return exposure

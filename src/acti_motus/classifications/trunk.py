@@ -16,7 +16,7 @@ class Trunk(Sensor):
     def _reference_angle_string(self, angle: np.ndarray) -> str:
         return f'[{angle[0]:.2f}, {angle[1]:.2f}, {angle[2]:.2f}]'
 
-    def calculate_reference_angle(self, df: pd.DataFrame) -> dict[np.ndarray, Calculation]:
+    def calculate_reference_angle(self, df: pd.DataFrame) -> tuple[np.ndarray, Calculation]:
         default_angle = np.array([27, 27, 0])
         angle_status = Calculation.DEFAULT
 
@@ -37,9 +37,9 @@ class Trunk(Sensor):
                 f'No walking data available. Using default reference angle: {self._reference_angle_string(reference_angle)} degrees.'
             )
 
-        return np.float32(np.radians(reference_angle)), angle_status
+        return np.float32(np.radians(reference_angle)), angle_status  # type: ignore
 
-    def rotate_by_reference_angle(self, df: pd.DataFrame, angle: np.ndarray):
+    def rotate_by_reference_angle(self, df: pd.DataFrame, angle: np.ndarray) -> pd.DataFrame:  # type: ignore
         df = df.copy()
         x, y, z = angle
 

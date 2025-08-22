@@ -21,7 +21,7 @@ class AngleStatus(Enum):
 
 @dataclass
 class Angle:
-    value: float | list[float]
+    value: float | list[float] | np.ndarray
     expires: datetime | None = None
     status: AngleStatus | None = None
 
@@ -63,7 +63,7 @@ class Angle:
             return False
         return self.expires < date
 
-    def fix_expiration(self, calibrations: 'Calibration') -> None:
+    def fix_expiration(self, calibrations: list['Calibration']) -> None:
         for calibration in calibrations:
             if self.expires and calibration.start < self.expires:
                 self.expires = calibration.start - SECOND
@@ -78,7 +78,7 @@ class Calibration:
     ttl: timedelta | None = None
     expires: datetime | None = None
 
-    def __post_init__(self) -> Self:
+    def __post_init__(self):
         """Convert start, end, ttl, and expires to appropriate types."""
         self.start = pd.to_datetime(self.start)
         self.end = pd.to_datetime(self.end)
@@ -120,16 +120,20 @@ class References:
         """Initialize the Angles object."""
         if isinstance(self.thigh, dict):
             self.thigh = Angle(**self.thigh)
-            self.thigh.fix_expiration(self.calibrations)
+
+            if self.calibrations:
+                self.thigh.fix_expiration(self.calibrations)
 
         if isinstance(self.trunk, dict):
             self.trunk = Angle(**self.trunk)
-            self.trunk.fix_expiration(self.calibrations)
+
+            if self.calibrations:
+                self.trunk.fix_expiration(self.calibrations)
 
         return self
 
     @classmethod
-    def from_dict(cls, references: dict[str, Any]) -> Self:
+    def from_dict(cls, references: dict[str, Any] | None) -> Self:
         """Create a References object from a dictionary."""
         if references is None:
             logger.info('No references provided, returning empty References object.')
@@ -152,7 +156,8 @@ class References:
 
     def sort_calibrations(self):
         """Sort calibrations by start time."""
-        self.calibrations.sort(key=lambda x: x.start)
+        if self.calibrations:
+            self.calibrations.sort(key=lambda x: x.start)
 
     def fix_calibration_overlaps(self):
         """Fix overlapping calibration intervals."""

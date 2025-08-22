@@ -18,8 +18,8 @@ class Activities:
     vendor: Literal['Sens', 'Other'] = 'Other'
     orientation: bool = True
     chunks: bool = False
-    size: timedelta = '1d'
-    overlap: timedelta = '15min'
+    size: str | timedelta = '1d'
+    overlap: str | timedelta = '15min'
 
     def __post_init__(self):
         if isinstance(self.size, str):
@@ -35,7 +35,7 @@ class Activities:
         trunk: pd.DataFrame | None = None,
         calf: pd.DataFrame | None = None,
         arm: pd.DataFrame | None = None,
-        references: dict[str, Any] | None = None,
+        references: References,
     ) -> tuple[pd.DataFrame, References]:
         not_overlaps = thigh[~thigh['overlap']]
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
@@ -68,7 +68,7 @@ class Activities:
         trunk: pd.DataFrame | None = None,
         calf: pd.DataFrame | None = None,
         arm: pd.DataFrame | None = None,
-        references: dict[str, Any] | None = None,
+        references: References,
     ) -> tuple[pd.DataFrame, References]:
         chunks = DataFrameIterator(thigh, size=self.size, overlap=self.overlap)
 
@@ -132,29 +132,28 @@ class Activities:
         calf: pd.DataFrame | None = None,
         arm: pd.DataFrame | None = None,
         references: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> tuple[pd.DataFrame, References]:
-        references = References.from_dict(references)  # type: References
-        references.remove_outdated(thigh.index[0])
+    ) -> tuple[pd.DataFrame, dict[str, Any]]:
+        references_obj = References.from_dict(references)
+        references_obj.remove_outdated(thigh.index[0])
 
         if self.chunks:
-            activities, references = self._compute_chunks(
+            activities, references_obj = self._compute_chunks(
                 thigh=thigh,
                 trunk=trunk,
                 calf=calf,
                 arm=arm,
-                references=references,
+                references=references_obj,
             )
         else:
-            activities, references = self._compute(
+            activities, references_obj = self._compute(
                 thigh=thigh,
                 trunk=trunk,
                 calf=calf,
                 arm=arm,
-                references=references,
+                references=references_obj,
             )
 
-        return activities, references.to_dict()
+        return activities, references_obj.to_dict()
 
     def _map_activities(
         self,
@@ -178,8 +177,8 @@ class Activities:
     def to_sens(
         self,
         df: pd.DataFrame,
-        references: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        references: dict[str, Any],
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         values = SENS__ACTIVITY_VALUES
         origin = df
         df = pd.DataFrame(index=origin.index)
@@ -206,7 +205,7 @@ class Activities:
             df[values].values,
             df['verbose'].values,
             references,
-        )
+        )  # type: ignore
 
     def _parse_sensor_features(
         self,
@@ -225,11 +224,10 @@ class Activities:
         self,
         timestamps: np.ndarray,
         data: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[pd.DataFrame, pd.DataFrame | None, pd.DataFrame | None, pd.DataFrame | None]:
         thigh, trunk, calf, arm = None, None, None, None
 
-        if timestamps[0] is not None and data[0] is not None:
-            thigh = self._parse_sensor_features(timestamps[0], data[0][:, 1:])
+        thigh = self._parse_sensor_features(timestamps[0], data[0][:, 1:])
 
         if timestamps[1] is not None and data[1] is not None:
             trunk = self._parse_sensor_features(timestamps[1], data[1][:, 1:])
@@ -247,7 +245,7 @@ class Activities:
         timestamps: np.ndarray,
         data: np.ndarray,
         references: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, Any]]:
         thigh, trunk, calf, arm = self._raw_from_sens(timestamps, data)
 
         df, references = self.compute(thigh=thigh, trunk=trunk, calf=calf, arm=arm, references=references)

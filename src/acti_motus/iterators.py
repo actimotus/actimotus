@@ -7,8 +7,8 @@ class DataFrameIterator:
     def __init__(
         self,
         df: pd.DataFrame,
-        size: timedelta = '1d',
-        overlap: timedelta = '15min',
+        size: str | timedelta = '1d',
+        overlap: str | timedelta = '15min',
     ) -> None:
         size = pd.Timedelta(size).to_pytimedelta()
         overlap = pd.Timedelta(overlap).to_pytimedelta()
@@ -47,7 +47,7 @@ class DataFrameIterator:
         chunks.iat[0, 0] = start
         chunks.iat[-1, -1] = end
 
-        chunks['start_overlap'] = chunks['start'] - overlap
+        chunks['start_overlap'] = chunks['start'] - overlap  # type: ignore
         chunks['end_overlap'] = chunks['end'] + overlap
 
         return chunks
@@ -59,9 +59,9 @@ class DataFrameIterator:
 
             return df
 
-        chunk = self.chunks.iloc[chunk]
-        start, end = chunk['start'], chunk['end']
-        start_overlap, end_overlap = chunk['start_overlap'], chunk['end_overlap']
+        chunk_record = self.chunks.iloc[chunk]
+        start, end = chunk_record['start'], chunk_record['end']
+        start_overlap, end_overlap = chunk_record['start_overlap'], chunk_record['end_overlap']
 
         df = self.df  # type: pd.DataFrame
         df = df.loc[(df.index >= start_overlap) & (df.index < end_overlap)].copy()

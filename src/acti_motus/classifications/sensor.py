@@ -190,11 +190,11 @@ class Sensor(ABC):
         pass
 
     @abstractmethod
-    def rotate_by_reference_angle(self, df: pd.DataFrame, angle: float | list[float]) -> pd.DataFrame:
+    def rotate_by_reference_angle(self, df: pd.DataFrame, angle: float | np.ndarray) -> pd.DataFrame:
         pass
 
     @abstractmethod
-    def calculate_reference_angle(self, df: pd.DataFrame) -> dict[float, Calculation]:
+    def calculate_reference_angle(self, df: pd.DataFrame) -> tuple[float | np.ndarray, Calculation]:
         pass
 
     def fix_bouts_orientation(self, df: pd.DataFrame, bouts: pd.DataFrame) -> pd.DataFrame:
