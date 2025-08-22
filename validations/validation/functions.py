@@ -111,7 +111,7 @@ def process_motus(
             df = rotate_by_90_degrees_over_x(df)
 
         extracted_features = features.compute(df)
-        activity, references = activities.detect(extracted_features, orientation=True)
+        activity, references = activities.compute(extracted_features, orientation=True)
 
         df = ground_truth.join(activity, how='left')
         df.dropna(subset=['activity'], inplace=True)
@@ -128,7 +128,7 @@ def process_motus(
             trunk = pd.read_parquet(trunk)
 
             features_trunk = features.compute(trunk)
-            activity_trunk, references_trunk = activities.detect(extracted_features, trunk=features_trunk)
+            activity_trunk, references_trunk = activities.compute(extracted_features, trunk=features_trunk)
             trunk_df = ground_truth.join(activity_trunk, how='left')
             trunk_df.dropna(subset=['activity'], inplace=True)
             trunk_df['id'] = thigh.stem

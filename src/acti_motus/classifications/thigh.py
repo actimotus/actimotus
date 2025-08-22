@@ -189,9 +189,9 @@ class Thigh(Sensor):
         self,
         df: pd.DataFrame,
         bouts_length: int,
-        move_threshold: float = 0.1,
+        shuffle_threshold: float = 0.1,
     ) -> pd.Series:
-        valid = (90 < df['inclination']) & (move_threshold < df['sd_x'])
+        valid = (90 < df['inclination']) & (shuffle_threshold < df['sd_x'])
         valid = self._median_filter(valid, bouts_length)
         valid.name = 'row'
 
@@ -201,10 +201,12 @@ class Thigh(Sensor):
         self,
         df: pd.DataFrame,
         bouts_length: int,
-        move_threshold: float = 0.1,
+        shuffle_threshold: float = 0.1,
         bicycle_threshold: float = 40,
     ) -> pd.Series:
-        valid = ((bicycle_threshold - 15) < df['direction']) & (df['inclination'] < 90) & (move_threshold < df['sd_x'])
+        valid = (
+            ((bicycle_threshold - 15) < df['direction']) & (df['inclination'] < 90) & (shuffle_threshold < df['sd_x'])
+        )
 
         valid = pd.Series(medfilt(valid.astype(int), 9), index=df.index)
         valid = valid & ((df['hl_ratio'] < 0.5) | (df['direction'] > bicycle_threshold))
@@ -239,7 +241,7 @@ class Thigh(Sensor):
         df: pd.DataFrame,
         bouts_length: int,
         stationary_threshold: float = 45,
-        move_threshold: float = 0.1,
+        shuffle_threshold: float = 0.1,
         run_threshold: float = 0.72,
         bicycle_threshold: float = 40,
     ) -> tuple[pd.Series, float]:
@@ -248,7 +250,7 @@ class Thigh(Sensor):
         valid = (
             (stairs_threshold < df['direction'])
             & (df['direction'] < bicycle_threshold)
-            & (move_threshold < df['sd_x'])
+            & (shuffle_threshold < df['sd_x'])
             & (df['sd_x'] < run_threshold)
             & (df['inclination'] < stationary_threshold)
         )
@@ -278,11 +280,11 @@ class Thigh(Sensor):
         bouts_length: int,
         stairs_threshold: float,
         stationary_threshold: float = 45,
-        move_threshold: float = 0.1,
+        shuffle_threshold: float = 0.1,
         run_threshold: float = 0.72,
     ) -> pd.Series:
         valid = (
-            (move_threshold < df['sd_x'])
+            (shuffle_threshold < df['sd_x'])
             & (df['sd_x'] < run_threshold)
             & (df['direction'] < stairs_threshold)
             & (df['inclination'] < stationary_threshold)
@@ -298,10 +300,10 @@ class Thigh(Sensor):
         df: pd.DataFrame,
         bouts_length: int,
         stationary_threshold: float = 45,
-        move_threshold: float = 0.1,
+        shuffle_threshold: float = 0.1,
     ) -> pd.Series:
         sd_max = np.max(df[['sd_x', 'sd_y', 'sd_z']], axis=1)
-        valid = (df['inclination'] < stationary_threshold) & (sd_max < move_threshold)
+        valid = (df['inclination'] < stationary_threshold) & (sd_max < shuffle_threshold)
 
         valid = self._median_filter(valid, bouts_length)
         valid.name = 'stand'
@@ -333,9 +335,9 @@ class Thigh(Sensor):
         ]
 
         df = df[categories].copy()
-        df['move'] = True  # If nothing else, it is move
+        df['shuffle'] = True  # If nothing else, it is shuffle
 
-        categories.append('move')
+        categories.append('shuffle')
         activity = df[categories].idxmax(axis=1)
         categories = categories + ['lie', 'non-wear']
         activity = activity.astype(pd.CategoricalDtype(categories=categories))
@@ -346,14 +348,14 @@ class Thigh(Sensor):
     def _fix_activities_bouts(self, df: pd.DataFrame, bouts: dict[str, int]) -> pd.Series:
         activities = df['activity']
 
-        # Order matters here - move position changed
+        # Order matters here - shuffle position changed
         for activity in [
             'row',
             'bicycle',
             'stairs',
             'run',
             'walk',
-            'move',
+            'shuffle',
             'stand',
             'sit',
         ]:

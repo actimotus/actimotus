@@ -31,7 +31,7 @@ class Exposures:
         upper: int,
     ) -> pd.Series:
         valid = (
-            df['activity'].isin(['stand', 'move', 'walk', 'run', 'stairs'])
+            df['activity'].isin(['stand', 'shuffle', 'walk', 'run', 'stairs'])
             & (df['trunk_direction'] > 0)
             & (df['trunk_inclination'].between(lower, upper, inclusive='both'))
         )
@@ -44,7 +44,7 @@ class Exposures:
         lower: int,
         upper: int,
     ) -> pd.Series:
-        valid = df['activity'].isin(['stand', 'move', 'walk']) & (
+        valid = df['activity'].isin(['stand', 'shuffle', 'walk']) & (
             df['arm_inclination'].between(lower, upper, inclusive='both')
         )
 
@@ -60,12 +60,14 @@ class Exposures:
         exposure = {
             'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
             'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'time'),
-            'standing': self._get_exposure(df, df['activity'].isin(['stand', 'move']), 'time'),
-            'on_feet': self._get_exposure(df, df['activity'].isin(['stand', 'move', 'walk', 'runk', 'stairs']), 'time'),
+            'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
+            'on_feet': self._get_exposure(
+                df, df['activity'].isin(['stand', 'shuffle', 'walk', 'runk', 'stairs']), 'time'
+            ),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'count'),
             'lpa': self._get_exposure(
                 df,
-                df['activity'].isin(['stand', 'move']) | self.get_slow_walking(df),
+                df['activity'].isin(['stand', 'shuffle']) | self.get_slow_walking(df),
                 'time',
             ),
             'mvpa': self._get_exposure(

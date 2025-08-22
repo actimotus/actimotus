@@ -3,7 +3,7 @@ SYSTEM_SF = 30
 BOUTS_LENGTH = {
     'sit': 5,
     'stand': 2,
-    'move': 2,
+    'shuffle': 2,
     'walk': 2,
     'run': 2,
     'stairs': 5,
@@ -17,7 +17,7 @@ ACTIVITIES = {
     1: 'lie',
     2: 'sit',
     3: 'stand',
-    4: 'move',
+    4: 'shuffle',
     5: 'walk',
     6: 'run',
     7: 'stairs',
