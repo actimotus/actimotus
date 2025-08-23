@@ -91,7 +91,7 @@ def process_motus(
     path = Path(folder)
     files = (path / 'thigh').glob('*.parquet')
 
-    features = Features(chunks=False, calibrate=False, resample='fft')
+    features = Features(chunking=False, calibrate=False)
     activities = Activities(vendor=vendor, chunks=False, orientation=orientation)  # type: ignore
 
     results = []

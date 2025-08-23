@@ -1,9 +1,8 @@
-import importlib.util
 import logging
 import math
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -11,23 +10,21 @@ from numpy.fft import fft as np_fft
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
+from .calibration import AutoCalibrate
 from .iterators import DataFrameIterator
-from .settings import FEATURES, RAW, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR, SYSTEM_SF
+from .settings import FEATURES, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR
 
 logger = logging.getLogger(__name__)
-
-NYQUIST_FREQ = SYSTEM_SF / 2
 
 
 @dataclass
 class Features:
-    sampling_frequency: float | None = None
+    system_frequency: float = 30
     validation: bool = True
-    chunks: bool = False
-    size: timedelta = '1d'
-    overlap: timedelta = '15min'
-    resample: Literal['fft', 'legacy'] = 'fft'
-    calibrate: bool | timedelta = False
+    chunking: bool = False
+    size: timedelta = timedelta(hours=24)
+    overlap: timedelta = timedelta(minutes=15)
+    calibrate: bool = False
 
     def __post_init__(self):
         if isinstance(self.size, str):
@@ -36,18 +33,8 @@ class Features:
         if isinstance(self.overlap, str):
             self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
 
-        if self.resample not in {'fft', 'legacy'}:
-            raise ValueError("Method must be one of 'fft' or 'legacy'.")
-
-        if self.calibrate:
-            if importlib.util.find_spec('labda_accelerometers') is None:
-                raise ImportError(
-                    "AutoCalibrate is not available. Please install 'labda-accelerometers' package to use calibration."
-                )
-
-            self.calibrate = (
-                self.size if isinstance(self.calibrate, bool) else pd.Timedelta(self.calibrate).to_pytimedelta()
-            )
+    def get_nyquist_freq(self, sampling_frequency: float) -> float:
+        return sampling_frequency / 2
 
     @staticmethod
     def get_sampling_frequency(
@@ -66,23 +53,11 @@ class Features:
 
         return sf
 
-    def _legacy_resample(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
-        n_in = len(df)
-        n_out = int(SYSTEM_SF * np.fix(n_in / sampling_frequency))
-
-        datetimes = pd.date_range(start=df.index[0], end=df.index[-1], periods=n_out)
-        df = pd.DataFrame(
-            {col: np.interp(datetimes, df.index, df[col]) for col in df.columns},
-            index=datetimes,
-        )
-
-        return df
-
     def _resample_fft(self, df: pd.DataFrame) -> pd.DataFrame:
         start = df.index[0]
         end = df.index[-1]
 
-        n_out = np.floor((end - start).total_seconds() * SYSTEM_SF).astype(int)
+        n_out = np.floor((end - start).total_seconds() * self.system_frequency).astype(int)
         resampled = signal.resample(df, n_out)
 
         df = pd.DataFrame(
@@ -95,28 +70,22 @@ class Features:
         return df
 
     def resampling(self, df: pd.DataFrame, sampling_frequency: float, tolerance=1) -> pd.DataFrame:
-        if math.isclose(sampling_frequency, SYSTEM_SF, abs_tol=tolerance):
+        if math.isclose(sampling_frequency, self.system_frequency, abs_tol=tolerance):
             logger.info(
-                f'Sampling frequency is {SYSTEM_SF} Hz, no resampling needed.',
+                f'Sampling frequency is {self.system_frequency} Hz, no resampling needed.',
                 extra={'sampling_frequency': sampling_frequency},
             )
             return df
 
-        match self.resample:
-            case 'fft':
-                df = self._resample_fft(df)
-            case 'legacy':
-                df = self._legacy_resample(df, sampling_frequency)
-            case _:
-                raise ValueError("Method must be one of 'fft' or 'legacy'.")
+        df = self._resample_fft(df)
 
         return df
 
     def get_hl_ratio(self, df: pd.DataFrame) -> pd.Series:
         order = 3
         cut_off = 1
-        window = SYSTEM_SF * 4
-        cut_off = cut_off / NYQUIST_FREQ
+        window = self.system_frequency * 4
+        cut_off = cut_off / self.get_nyquist_freq(self.system_frequency)
 
         axis_z = df['acc_z'].values
 
@@ -132,10 +101,10 @@ class Features:
         high = np.pad(high, (0, pad_width), mode='edge')
         low = np.pad(low, (0, pad_width), mode='edge')
 
-        high_windows = sliding_window_view(high, window)[::SYSTEM_SF]
+        high_windows = sliding_window_view(high, window)[:: self.system_frequency]
         mean_high = np.mean(high_windows, axis=1, dtype=np.float32)
 
-        low_windows = sliding_window_view(low, window)[::SYSTEM_SF]
+        low_windows = sliding_window_view(low, window)[:: self.system_frequency]
         mean_low = np.mean(low_windows, axis=1, dtype=np.float32)
 
         hl_ratio = np.divide(
@@ -145,15 +114,15 @@ class Features:
         return pd.Series(hl_ratio, name='hl_ratio')
 
     def _get_steps_feature(self, arr: np.ndarray) -> np.ndarray:
-        window = SYSTEM_SF * 4  # 120 samples equal to 2 seconds
-        steps_window = 4 * window  # 480 samples equal to 8 seconds
-        half_size = window * 2  # 240 samples equal to 4 seconds
+        window = self.system_frequency * 4  # 120 (system frequency = 30) samples equal to 2 seconds
+        steps_window = 4 * window  # 480 (system frequency = 30) samples equal to 8 seconds
+        half_size = window * 2  # 240 (system frequency = 30) samples equal to 4 seconds
         arr = arr.astype(np.float32)
 
         pad_width = window - 1
         arr = np.pad(arr, (0, pad_width), mode='edge')
 
-        windows = sliding_window_view(arr, window)[::SYSTEM_SF]
+        windows = sliding_window_view(arr, window)[:: self.system_frequency]
         windows = windows - np.mean(windows, axis=1, keepdims=True, dtype=np.float32)
 
         fft_result = np_fft(windows, steps_window)[:, :half_size]
@@ -163,14 +132,15 @@ class Features:
 
     def get_steps_features(self, df: pd.DataFrame) -> pd.DataFrame:
         axis_x = df['acc_x'].values
+        nyquist_frequency = self.get_nyquist_freq(self.system_frequency)
 
-        b, a = signal.butter(6, 2.5 / NYQUIST_FREQ, 'low')
+        b, a = signal.butter(6, 2.5 / nyquist_frequency, 'low')
         filtered = signal.lfilter(b, a, axis_x, axis=0)
 
-        b, a = signal.butter(6, 1.5 / NYQUIST_FREQ, 'high')
+        b, a = signal.butter(6, 1.5 / nyquist_frequency, 'high')
         walk = signal.lfilter(b, a, filtered, axis=0)
 
-        b, a = signal.butter(6, 3 / NYQUIST_FREQ, 'high')
+        b, a = signal.butter(6, 3 / nyquist_frequency, 'high')
         run = signal.lfilter(b, a, walk)
 
         df = pd.DataFrame(
@@ -183,13 +153,13 @@ class Features:
         return df
 
     def get_tensor(self, arr: np.ndarray) -> np.ndarray:
-        pb = np.vstack((arr[:SYSTEM_SF], arr))
-        pa = np.vstack((arr, arr[-SYSTEM_SF:]))
-        n = pb.shape[0] // SYSTEM_SF
+        pb = np.vstack((arr[: self.system_frequency], arr))
+        pa = np.vstack((arr, arr[-self.system_frequency :]))
+        n = pb.shape[0] // self.system_frequency
         tensor = np.concatenate(
             [
-                pb[: n * SYSTEM_SF].reshape(SYSTEM_SF, n, 3, order='F'),
-                pa[: n * SYSTEM_SF].reshape(SYSTEM_SF, n, 3, order='F'),
+                pb[: n * self.system_frequency].reshape(self.system_frequency, n, 3, order='F'),
+                pa[: n * self.system_frequency].reshape(self.system_frequency, n, 3, order='F'),
             ],
             axis=0,
         )
@@ -198,7 +168,7 @@ class Features:
     def downsampling(self, df: pd.DataFrame) -> pd.DataFrame:
         axes = df.values
 
-        b, a = signal.butter(4, 5 / NYQUIST_FREQ, 'low')
+        b, a = signal.butter(4, 5 / self.get_nyquist_freq(self.system_frequency), 'low')
         filtered = signal.lfilter(b, a, axes, axis=0).astype(np.float32)
 
         tensor = self.get_tensor(filtered)
@@ -233,6 +203,9 @@ class Features:
         return df
 
     def check_format(self, df: pd.DataFrame) -> pd.DataFrame:
+        if not self.validation:
+            return df
+
         if not isinstance(df, pd.DataFrame):
             raise TypeError('Input must be a pandas DataFrame.')
 
@@ -250,6 +223,9 @@ class Features:
         for col in df.columns:
             if not pd.api.types.is_numeric_dtype(df[col]):
                 raise ValueError(f"Column '{col}' must contain numeric data, but got {df[col].dtype}.")
+
+        df = df.iloc[:, :3]
+        df.columns = ['acc_x', 'acc_y', 'acc_z']
 
         return df
 
@@ -269,39 +245,20 @@ class Features:
 
         return df
 
-    def _compute_chunks(self, df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
+    def _compute_chunks(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
         chunks = DataFrameIterator(df, size=self.size, overlap=self.overlap)
         computed = []
 
         for chunk in chunks:
-            computed.append(self._compute_chunk(chunk, **kwargs))
+            computed.append(self._compute_chunk(chunk, sampling_frequency=sampling_frequency))
 
         computed = pd.concat(computed)
         computed.sort_index(inplace=True)
 
         return computed
 
-    def _compute(
-        self,
-        df: pd.DataFrame,
-        **kwargs: Any,
-    ) -> pd.DataFrame:
-        if self.validation:
-            df = self.check_format(df)
-
-        df = df.iloc[:, :3]
-        df.columns = ['acc_x', 'acc_y', 'acc_z']
-
-        sf = self.sampling_frequency or self.get_sampling_frequency(df)
-
-        if self.calibrate:
-            from labda_accelerometers import AutoCalibrate
-
-            df = AutoCalibrate(min_hours=int(self.calibrate.total_seconds() // 3600), sampling_frequency=sf).calibrate(
-                df
-            )
-
-        df = self.resampling(df, sf)
+    def _compute(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
+        df = self.resampling(df, sampling_frequency)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
         downsampled = self.downsampling(df)
@@ -316,20 +273,23 @@ class Features:
             freq=timedelta(seconds=1),
             name='datetime',
         )
-        df['sf'] = sf
+        df['sf'] = sampling_frequency
         logger.info('Features computed.')
 
         return df
 
-    def compute(
-        self,
-        df: pd.DataFrame,
-        **kwargs: Any,
-    ) -> pd.DataFrame:
-        if self.chunks:
-            return self._compute_chunks(df, **kwargs)
+    def compute(self, df: pd.DataFrame, sampling_frequency: float | None = None) -> pd.DataFrame:
+        df = self.check_format(df)
+
+        sampling_frequency = sampling_frequency or self.get_sampling_frequency(df)
+
+        if self.calibrate:
+            df = AutoCalibrate().compute(df, hertz=sampling_frequency)
+
+        if self.chunking:
+            return self._compute_chunks(df, sampling_frequency)
         else:
-            return self._compute(df, **kwargs)
+            return self._compute(df, sampling_frequency)
 
     def to_sens(
         self,
@@ -363,11 +323,11 @@ class Features:
         df = pd.DataFrame(
             data,
             index=timestamps,
-            columns=RAW,
+            columns=['acc_x', 'acc_y', 'acc_z'],
         )
 
         df = df * SENS__NORMALIZATION_FACTOR
-        df.index = pd.to_datetime(df.index, unit='ms')  # type: ignore
+        df.index = pd.to_datetime(df.index, unit='ms')
         df.index.name = 'datetime'
 
         return df
