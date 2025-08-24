@@ -31,6 +31,7 @@ dependencies = [
     "numpy>=2.2.6",
     "pandas>=2.2.3",
     "pyarrow>=20.0.0",
+    "scikit-digital-health>=0.17.9",
 ]
 
 [project.urls]
@@ -41,6 +42,7 @@ Changelog = 'https://github.com/acti-motus/acti-motus/blob/main/CHANGELOG.md'
 
 [dependency-groups]
 dev = [
+    "labda",
     "altair[save]>=5.5.0",
     "ipykernel>=6.29.5",
     "pre-commit>=4.2.0",
@@ -48,8 +50,6 @@ dev = [
     "ruff>=0.11.11",
     "kaleido==0.2.1",
     "nbformat>=5.10.4",
-    "labda-parsers",
-    "labda-accelerometers",
     "openpyxl>=3.1.5",
     "xlrd>=2.0.2",
 ]
@@ -65,13 +65,9 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/acti_motus"]
-include = [
-    "src/acti_motus/logger/config.json"
-]
 
 [tool.uv.sources]
-labda-parsers = { path = "../labda-parsers", editable = true }
-labda-accelerometers = { path = "../labda-accel", editable = true }
+labda = { path = "../labda" }
 
 [tool.ruff.lint]
 pydocstyle = { convention = 'google' }
