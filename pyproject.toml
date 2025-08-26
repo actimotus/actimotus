@@ -42,7 +42,6 @@ Changelog = 'https://github.com/acti-motus/acti-motus/blob/main/CHANGELOG.md'
 
 [dependency-groups]
 dev = [
-    "labda",
     "altair[save]>=5.5.0",
     "ipykernel>=6.29.5",
     "pre-commit>=4.2.0",
@@ -65,9 +64,6 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/acti_motus"]
-
-[tool.uv.sources]
-labda = { path = "../labda" }
 
 [tool.ruff.lint]
 pydocstyle = { convention = 'google' }
