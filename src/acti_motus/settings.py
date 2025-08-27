@@ -1,15 +1,51 @@
-SYSTEM_SF = 30
-
-BOUTS_LENGTH = {
-    'sit': 5,
-    'stand': 2,
-    'shuffle': 2,
-    'walk': 2,
-    'run': 2,
-    'stairs': 5,
-    'bicycle': 15,
-    'row': 15,
-    'lie': 1,
+CONFIG = {
+    'thigh': {
+        'sit': {
+            'bout': 5,
+            'inclination_angle': 45,
+        },
+        'lie': {
+            'bout': 1,
+            'orientation_angle': 65,
+        },
+        'stand': {
+            'bout': 2,
+            'inclination_angle': 45,
+            'movement_threshold': 0.1,
+        },
+        'walk': {
+            'bout': 2,
+            'inclination_angle': 45,
+            'movement_threshold': 0.1,
+            'run_threshold': 0.72,
+        },
+        'stairs': {
+            'bout': 5,
+            'inclination_angle': 45,
+            'movement_threshold': 0.1,
+            'run_threshold': 0.72,
+            'direction_threshold': 40,
+            'stairs_threshold': 4,
+        },
+        'run': {
+            'bout': 2,
+            'inclination_angle': 45,
+            'run_threshold': 0.72,
+            'step_frequency': 2.5,
+        },
+        'bicycle': {
+            'bout': 15,
+            'movement_threshold': 0.1,
+            'direction_threshold': 40,
+        },
+        'row': {
+            'bout': 15,
+            'movement_threshold': 0.1,
+        },
+        'shuffle': {
+            'bout': 2,
+        },
+    }
 }
 
 ACTIVITIES = {
@@ -26,12 +62,6 @@ ACTIVITIES = {
     10: 'kneel',
     11: 'squat',
 }
-
-RAW = [
-    'acc_x',
-    'acc_y',
-    'acc_z',
-]
 
 FEATURES = [
     'x',

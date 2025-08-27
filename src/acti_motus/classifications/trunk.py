@@ -1,10 +1,10 @@
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from ..settings import BOUTS_LENGTH
 from .references import References
 from .sensor import Calculation, Sensor
 
@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Trunk(Sensor):
+    config: dict[str, Any]
+
     def _reference_angle_string(self, angle: np.ndarray) -> str:
         return f'[{angle[0]:.2f}, {angle[1]:.2f}, {angle[2]:.2f}]'
 
@@ -118,6 +120,9 @@ class Trunk(Sensor):
         activities: pd.DataFrame,
         references: References,
     ) -> pd.DataFrame:
+        thigh_config = self.config['thigh']
+        bouts_length = {activity[0]: activity[1]['bout'] for activity in thigh_config.items()}
+
         activities = activities.copy()
         df = df.copy()
 
@@ -138,7 +143,7 @@ class Trunk(Sensor):
         df['activity'] = self.fix_sit(df)
 
         for activity in ['sit', 'lie']:
-            df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
+            df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])
 
         df.loc[df['non-wear'], 'inclination'] = np.nan
         df.loc[df['non-wear'], 'direction'] = np.nan

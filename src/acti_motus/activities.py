@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any, Literal
 
@@ -8,18 +8,20 @@ import pandas as pd
 
 from .classifications import Arm, Calf, References, Thigh, Trunk
 from .iterators import DataFrameIterator
-from .settings import ACTIVITIES, FEATURES, SENS__ACTIVITY_VALUES, SENS__FLOAT_FACTOR
+from .settings import ACTIVITIES, CONFIG, FEATURES, SENS__ACTIVITY_VALUES, SENS__FLOAT_FACTOR
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Activities:
+    system_frequency: int = 30
     vendor: Literal['Sens', 'Other'] = 'Other'
     orientation: bool = True
     chunks: bool = False
     size: str | timedelta = '1d'
     overlap: str | timedelta = '15min'
+    config: dict[str, Any] = field(default_factory=lambda: CONFIG.copy())
 
     def __post_init__(self):
         if isinstance(self.size, str):
@@ -101,13 +103,16 @@ class Activities:
         if thigh.empty:
             raise ValueError('Thigh data is empty. Please provide valid thigh data.')
 
-        activities = Thigh(vendor=self.vendor, orientation=self.orientation).compute_activities(
-            thigh, references=references
-        )
+        activities = Thigh(
+            orientation=self.orientation,
+            system_frequency=self.system_frequency,
+            vendor=self.vendor,
+            config=self.config,
+        ).compute_activities(thigh, references=references)
         logger.info('Detected activities for thigh.')
 
         if isinstance(trunk, pd.DataFrame) and not trunk.empty:
-            activities = Trunk(orientation=self.orientation).compute_activities(
+            activities = Trunk(orientation=self.orientation, config=self.config).compute_activities(
                 trunk, activities, references=references
             )
             logger.info('Detected activities for trunk.')

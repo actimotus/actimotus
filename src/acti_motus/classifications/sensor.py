@@ -24,7 +24,7 @@ class Calculation(Enum):
 
 @dataclass
 class Sensor(ABC):
-    orientation: bool = True
+    orientation: bool
 
     def get_angles(self, df: pd.DataFrame) -> pd.DataFrame:
         axes = df[['x', 'y', 'z']].to_numpy()

@@ -31,7 +31,7 @@ class Features:
     mimic Sen's infrastructure processing.
 
     Attributes:
-        system_frequency (float): The target frequency (in Hz) to which the data
+        system_frequency (int): The target frequency (in Hz) to which the data
             is resampled. Defaults to 30 Hz and should not be changed as all pipelines are
             designed to work with this frequency.
         validation (bool): Performs validation on the input DataFrame's
@@ -42,7 +42,7 @@ class Features:
         overlap (timedelta): The overlap between consecutive chunks.
     """
 
-    system_frequency: float = 30
+    system_frequency: int = 30
     validation: bool = True
     calibrate: bool = True
     chunking: bool = False

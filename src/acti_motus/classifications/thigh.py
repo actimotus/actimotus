@@ -1,13 +1,12 @@
 import logging
 import math
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 from scipy.signal import medfilt
 
-from ..settings import BOUTS_LENGTH, SYSTEM_SF
 from .references import References
 from .sensor import Calculation, Sensor
 
@@ -16,12 +15,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Thigh(Sensor):
-    vendor: Literal['Sens', 'Other'] = 'Other'
+    system_frequency: int
+    vendor: Literal['Sens', 'Other']
+    config: dict[str, Any]
     # rotate: bool = False # TODO: Implement rotation logic first.
 
     def check_inside_out_flip(self, df: pd.DataFrame) -> bool:
         # TODO: Check that this works correctly.
-        rows_per_hour = SYSTEM_SF * 60 * 2
+        rows_per_hour = self.system_frequency * 60 * 2
         window = rows_per_hour * 3
         step = rows_per_hour
         min_periods = rows_per_hour
@@ -102,24 +103,24 @@ class Thigh(Sensor):
         sd['terms_x'] = (
             (sq_sin * df['sq_sum_z'])
             + (sq_cos * df['sq_sum_x'])
-            + (2 * SYSTEM_SF * sq_x)
+            + (2 * self.system_frequency * sq_x)
             + (2 * sin * df['x'] * df['sum_z'])
             + (-2 * sin * cos * df['sum_dot_xz'])
             + (-2 * cos * df['x'] * df['sum_x'])
         )
         sd.loc[sd['terms_x'] <= 0, 'terms_x'] = 0
-        sd['sd_x'] = np.sqrt(1 / (2 * SYSTEM_SF - 1) * sd['terms_x'])
+        sd['sd_x'] = np.sqrt(1 / (2 * self.system_frequency - 1) * sd['terms_x'])
 
         sd['terms_z'] = (
             (sq_sin * df['sq_sum_x'])
             + (sq_cos * df['sq_sum_z'])
-            + (2 * SYSTEM_SF * sq_z)
+            + (2 * self.system_frequency * sq_z)
             + (2 * sin * cos * df['sum_dot_xz'])
             + (-2 * sin * df['z'] * df['sum_x'])
             + (-2 * cos * df['z'] * df['sum_z'])
         )
         sd.loc[sd['terms_z'] <= 0, 'terms_z'] = 0
-        sd['sd_z'] = np.sqrt(1 / (2 * SYSTEM_SF - 1) * sd['terms_z'])
+        sd['sd_z'] = np.sqrt(1 / (2 * self.system_frequency - 1) * sd['terms_z'])
 
         sd['sd_y'] = df['sd_y']
 
@@ -188,11 +189,12 @@ class Thigh(Sensor):
     def get_row(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
-        shuffle_threshold: float = 0.1,
+        bout: int,
+        movement_threshold: float,
+        **kwargs,
     ) -> pd.Series:
-        valid = (90 < df['inclination']) & (shuffle_threshold < df['sd_x'])
-        valid = self._median_filter(valid, bouts_length)
+        valid = (90 < df['inclination']) & (movement_threshold < df['sd_x'])
+        valid = self._median_filter(valid, bout)
         valid.name = 'row'
 
         return valid
@@ -200,18 +202,21 @@ class Thigh(Sensor):
     def get_bicycle(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
-        shuffle_threshold: float = 0.1,
-        bicycle_threshold: float = 40,
+        bout: int,
+        movement_threshold: float,
+        direction_threshold: float,
+        **kwargs,
     ) -> pd.Series:
         valid = (
-            ((bicycle_threshold - 15) < df['direction']) & (df['inclination'] < 90) & (shuffle_threshold < df['sd_x'])
+            ((direction_threshold - 15) < df['direction'])
+            & (df['inclination'] < 90)
+            & (movement_threshold < df['sd_x'])
         )
 
         valid = pd.Series(medfilt(valid.astype(int), 9), index=df.index)
-        valid = valid & ((df['hl_ratio'] < 0.5) | (df['direction'] > bicycle_threshold))
+        valid = valid & ((df['hl_ratio'] < 0.5) | (df['direction'] > direction_threshold))
 
-        valid = self._median_filter(valid, bouts_length)
+        valid = self._median_filter(valid, bout)
         valid.name = 'bicycle'
 
         return valid
@@ -220,7 +225,7 @@ class Thigh(Sensor):
         self,
         df: pd.DataFrame,
         run_threshold: float,
-        stairs_threshold: float = 4,
+        stairs_threshold: float,
     ) -> float:
         valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (df['direction'] < 25)
 
@@ -239,23 +244,25 @@ class Thigh(Sensor):
     def get_stairs(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
-        stationary_threshold: float = 45,
-        shuffle_threshold: float = 0.1,
-        run_threshold: float = 0.72,
-        bicycle_threshold: float = 40,
+        bout: int,
+        inclination_angle: float,
+        movement_threshold: float,
+        run_threshold: float,
+        direction_threshold: float,
+        stairs_threshold: float,
+        **kwargs,
     ) -> tuple[pd.Series, float]:
-        stairs_threshold = self._get_stairs_threshold(df, run_threshold)
+        stairs_threshold = self._get_stairs_threshold(df, run_threshold, stairs_threshold)
 
         valid = (
             (stairs_threshold < df['direction'])
-            & (df['direction'] < bicycle_threshold)
-            & (shuffle_threshold < df['sd_x'])
+            & (df['direction'] < direction_threshold)
+            & (movement_threshold < df['sd_x'])
             & (df['sd_x'] < run_threshold)
-            & (df['inclination'] < stationary_threshold)
+            & (df['inclination'] < inclination_angle)
         )
 
-        valid = self._median_filter(valid, bouts_length)
+        valid = self._median_filter(valid, bout)
         valid.name = 'stairs'
 
         return valid, stairs_threshold
@@ -263,13 +270,14 @@ class Thigh(Sensor):
     def get_run(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
-        stationary_threshold: float = 45,
-        run_threshold: float = 0.72,
+        bout: int,
+        inclination_angle: float,
+        run_threshold: float,
+        **kwargs,  # Because there is extra parameter, so it will be ignored.
     ) -> pd.Series:
-        valid = (df['sd_x'] > run_threshold) & (df['inclination'] < stationary_threshold)
+        valid = (df['sd_x'] > run_threshold) & (df['inclination'] < inclination_angle)
 
-        valid = self._median_filter(valid, bouts_length)
+        valid = self._median_filter(valid, bout)
         valid.name = 'run'
 
         return valid
@@ -277,20 +285,21 @@ class Thigh(Sensor):
     def get_walk(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
+        bout: int,
         stairs_threshold: float,
-        stationary_threshold: float = 45,
-        shuffle_threshold: float = 0.1,
-        run_threshold: float = 0.72,
+        inclination_angle: float,
+        movement_threshold: float,
+        run_threshold: float,
+        **kwargs,
     ) -> pd.Series:
         valid = (
-            (shuffle_threshold < df['sd_x'])
+            (movement_threshold < df['sd_x'])
             & (df['sd_x'] < run_threshold)
             & (df['direction'] < stairs_threshold)
-            & (df['inclination'] < stationary_threshold)
+            & (df['inclination'] < inclination_angle)
         )
 
-        valid = self._median_filter(valid, bouts_length)
+        valid = self._median_filter(valid, bout)
         valid.name = 'walk'
 
         return valid
@@ -298,14 +307,15 @@ class Thigh(Sensor):
     def get_stand(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
-        stationary_threshold: float = 45,
-        shuffle_threshold: float = 0.1,
+        bout: int,
+        inclination_angle: float,
+        movement_threshold: float,
+        **kwargs,
     ) -> pd.Series:
         sd_max = np.max(df[['sd_x', 'sd_y', 'sd_z']], axis=1)
-        valid = (df['inclination'] < stationary_threshold) & (sd_max < shuffle_threshold)
+        valid = (df['inclination'] < inclination_angle) & (sd_max < movement_threshold)
 
-        valid = self._median_filter(valid, bouts_length)
+        valid = self._median_filter(valid, bout)
         valid.name = 'stand'
 
         return valid
@@ -313,11 +323,12 @@ class Thigh(Sensor):
     def get_sit(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
-        stationary_threshold: float = 45,
+        bout: int,
+        inclination_angle: float,
+        **kwargs,
     ) -> pd.Series:
-        valid = df['inclination'] > stationary_threshold
-        valid = self._median_filter(valid, bouts_length)
+        valid = df['inclination'] > inclination_angle
+        valid = self._median_filter(valid, bout)
         valid.name = 'sit'
 
         return valid
@@ -366,16 +377,15 @@ class Thigh(Sensor):
     def _get_rotational_crossing_points(
         self,
         df: pd.DataFrame,
+        orientation_threshold: float,
     ) -> pd.DataFrame:
-        angle_high_threshold = 65
-        angle_low_threshold = 64
         noise_margin = 0.05
 
         thigh_angle = np.arcsin(df['y'] / np.sqrt(np.square(df['y']) + np.square(df['z'])))  # type: pd.Series # type:ignore
         thigh_angle = np.absolute(np.degrees(thigh_angle))  # type: pd.Series # type:ignore
 
-        low = (thigh_angle <= angle_low_threshold).diff()
-        high = (thigh_angle >= angle_high_threshold).diff()
+        low = (thigh_angle < orientation_threshold).diff()
+        high = (thigh_angle >= orientation_threshold).diff()
 
         noise = thigh_angle.diff().abs()  # type: float # type: ignore
         noise = noise >= noise_margin
@@ -388,10 +398,12 @@ class Thigh(Sensor):
     def get_lie(
         self,
         df: pd.DataFrame,
-        bouts_length: int,
+        bout: int,
+        orientation_angle: float,
+        **kwargs,
     ) -> pd.Series:
         df = df[['activity', 'y', 'z']].copy()
-        df[['low', 'high']] = self._get_rotational_crossing_points(df)
+        df[['low', 'high']] = self._get_rotational_crossing_points(df, orientation_angle)
         df['lie'] = pd.Series(False, index=df.index, dtype=bool)
         df['bout'] = (df['activity'] != df['activity'].shift()).cumsum()
 
@@ -399,7 +411,7 @@ class Thigh(Sensor):
             df['activity'] == 'sit', 'bout'
         ]  # NOTE: Activity "sit" needs to be already in the activities dataframe.
         bout_sizes = specific_activity.value_counts()
-        specific_bouts = bout_sizes[bout_sizes > bouts_length].index.values  # FIXME: Try > or >=
+        specific_bouts = bout_sizes[bout_sizes > bout].index.values  # FIXME: Try > or >=
 
         df['specific'] = False
         df.loc[df['bout'].isin(specific_bouts), 'specific'] = True
@@ -413,7 +425,7 @@ class Thigh(Sensor):
 
     def get_steps(self, df: pd.DataFrame) -> pd.Series:
         df = df[['activity', 'walk_feature', 'run_feature']].copy()
-        scale = SYSTEM_SF / 2 * np.linspace(0, 1, 256)
+        scale = self.system_frequency / 2 * np.linspace(0, 1, 256)
 
         df['steps'] = 0
         df.loc[df['activity'].isin(['walk', 'stairs']), 'steps'] = df['walk_feature']
@@ -428,6 +440,8 @@ class Thigh(Sensor):
         df: pd.DataFrame,
         references: References,
     ) -> pd.DataFrame:
+        config = self.config['thigh']
+
         df = df.copy()
         sf = df['sf'].mode().values[0].item()
 
@@ -443,31 +457,32 @@ class Thigh(Sensor):
         if self.vendor.lower() == 'sens':
             self._downsample_sd_correction_for_sens(df, sf)
 
-        df['row'] = self.get_row(df, BOUTS_LENGTH['row'])
-        df['bicycle'] = self.get_bicycle(df, BOUTS_LENGTH['bicycle'])
-        df['stairs'], stairs_threshold = self.get_stairs(df, BOUTS_LENGTH['stairs'])
-        df['run'] = self.get_run(df, BOUTS_LENGTH['run'])
-        df['walk'] = self.get_walk(df, BOUTS_LENGTH['walk'], stairs_threshold)
-        df['stand'] = self.get_stand(df, BOUTS_LENGTH['stand'])
-        df['sit'] = self.get_sit(df, BOUTS_LENGTH['sit'])
+        df['row'] = self.get_row(df, **config['row'])
+        df['bicycle'] = self.get_bicycle(df, **config['bicycle'])
+        df['stairs'], stairs_threshold = self.get_stairs(df, **config['stairs'])
+        df['run'] = self.get_run(df, **config['run'])
+        df['walk'] = self.get_walk(df, **config['walk'], stairs_threshold=stairs_threshold)
+        df['stand'] = self.get_stand(df, **config['stand'])
+        df['sit'] = self.get_sit(df, **config['sit'])
 
         df['activity'] = self._get_activity_column(df)
-        df['activity'] = self._fix_activities_bouts(df, BOUTS_LENGTH)
+        bouts_length = {activity[0]: activity[1]['bout'] for activity in config.items()}
+        df['activity'] = self._fix_activities_bouts(df, bouts_length)
 
-        df['lie'] = self.get_lie(df, BOUTS_LENGTH['lie'])
+        df['lie'] = self.get_lie(df, **config['lie'])
         df.loc[df['lie'], 'activity'] = 'lie'
 
         for activity in ['sit', 'lie']:
-            df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
+            df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])
 
         df.loc[non_wear, 'activity'] = 'non-wear'
         del non_wear
 
         df['steps'] = self.get_steps(df)
 
-        df.loc[(df['activity'] == 'walk') & (df['steps'] > 2.5), 'activity'] = 'run'
+        df.loc[(df['activity'] == 'walk') & (df['steps'] > config['run']['step_frequency']), 'activity'] = 'run'
         for activity in ['run', 'walk']:
-            df['activity'] = self.fix_bouts(df['activity'], activity, BOUTS_LENGTH[activity])
+            df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])
 
         df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
         df.rename(
