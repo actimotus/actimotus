@@ -77,38 +77,54 @@ class Trunk(Sensor):
             return False
 
         mdn = np.median(valid_points['direction'])
-        flip = False if mdn > 0 else True
+        flip = False if (mdn > 0.1) else True
 
         if flip:
             logger.warning(f'Inside out flip detected (median z: {mdn:.2f}).')
 
         return flip
 
-    def get_backwards(self, df: pd.DataFrame) -> pd.Series:
-        backwards = (df['direction'] < -45) | (df['side_tilt'].abs() > 45)
+    def get_backwards(
+        self,
+        df: pd.DataFrame,
+        inclination_angle: float,
+        **kwargs,
+    ) -> pd.Series:
+        backwards = (df['direction'] < -inclination_angle) | (df['side_tilt'].abs() > inclination_angle)
         backwards.name = 'backwards'
 
         return backwards
 
-    def fix_lie(self, df: pd.DataFrame) -> pd.Series:
+    def fix_lie(
+        self,
+        df: pd.DataFrame,
+        orientation_angle: float,
+        **kwargs,
+    ) -> pd.Series:
         valid = df[['activity']].copy()
         mask = ~df['non-wear']  # Only consider wear time
         valid.loc[mask & (valid['activity'] == 'lie'), 'activity'] = 'sit'  # Change every lie to sit
-        valid.loc[mask & (valid['activity'] == 'sit') & (df['inclination'] > 65), 'activity'] = 'lie'
+        valid.loc[mask & (valid['activity'] == 'sit') & (df['inclination'] > orientation_angle), 'activity'] = 'lie'
         valid.loc[mask & (valid['activity'] == 'sit') & (df['backwards']), 'activity'] = 'lie'
 
         return valid['activity']
 
-    def fix_sit(self, df: pd.DataFrame) -> pd.Series:
+    def fix_sit(
+        self,
+        df: pd.DataFrame,
+        orientation_angle: float,
+        inclination_angle: float,
+        **kwargs,
+    ) -> pd.Series:
         valid = df[['activity']].copy()
         mask = (~df['non-wear']) & (valid['activity'] == 'lie')  # Only consider wear time and lie activity
-        valid.loc[mask & (df['direction'] > 0) & (df['thigh_direction'] > 45), 'activity'] = 'sit'
+        valid.loc[mask & (df['direction'] > 0) & (df['thigh_direction'] > inclination_angle), 'activity'] = 'sit'
 
         valid.loc[
             mask
             & ((df['inclination'] - df['direction']).abs() < 10)
-            & (df['inclination'] < 65)
-            & (df['direction'] < 65),
+            & (df['inclination'] < orientation_angle)
+            & (df['direction'] < orientation_angle),
             'activity',
         ] = 'sit'
 
@@ -121,6 +137,7 @@ class Trunk(Sensor):
         references: References,
     ) -> pd.DataFrame:
         thigh_config = self.config['thigh']
+        config = self.config['trunk']
         bouts_length = {activity[0]: activity[1]['bout'] for activity in thigh_config.items()}
 
         activities = activities.copy()
@@ -138,9 +155,9 @@ class Trunk(Sensor):
 
         df, bouts = self.rotate_bouts_by_reference_angles(df, bouts)
 
-        df['backwards'] = self.get_backwards(df)
-        df['activity'] = self.fix_lie(df)
-        df['activity'] = self.fix_sit(df)
+        df['backwards'] = self.get_backwards(df, **config['lie'])
+        df['activity'] = self.fix_lie(df, **config['lie'])
+        df['activity'] = self.fix_sit(df, **config['lie'])
 
         for activity in ['sit', 'lie']:
             df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])

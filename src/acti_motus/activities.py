@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Literal
 
@@ -21,7 +21,7 @@ class Activities:
     chunks: bool = False
     size: str | timedelta = '1d'
     overlap: str | timedelta = '15min'
-    config: dict[str, Any] = field(default_factory=lambda: CONFIG.copy())
+    config: dict[str, Any] | None = None
 
     def __post_init__(self):
         if isinstance(self.size, str):
@@ -29,6 +29,9 @@ class Activities:
 
         if isinstance(self.overlap, str):
             self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
+
+        if self.config is None:
+            self.config = CONFIG
 
     def _compute_chunk(
         self,

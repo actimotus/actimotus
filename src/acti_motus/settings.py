@@ -1,4 +1,4 @@
-CONFIG = {
+LEGACY_CONFIG = {
     'thigh': {
         'sit': {
             'bout': 5,
@@ -26,6 +26,7 @@ CONFIG = {
             'run_threshold': 0.72,
             'direction_threshold': 40,
             'stairs_threshold': 4,
+            'anterior_posterior_angle': 25,
         },
         'run': {
             'bout': 2,
@@ -36,16 +37,85 @@ CONFIG = {
         'bicycle': {
             'bout': 15,
             'movement_threshold': 0.1,
+            'anterior_posterior_angle': 25,
             'direction_threshold': 40,
+            'inclination_angle': 90,
         },
         'row': {
             'bout': 15,
             'movement_threshold': 0.1,
+            'inclination_angle': 90,
         },
         'shuffle': {
             'bout': 2,
         },
-    }
+    },
+    'trunk': {
+        'lie': {
+            'inclination_angle': 45,
+            'orientation_angle': 65,
+        }
+    },
+}
+
+CONFIG = {
+    'thigh': {
+        'sit': {
+            'bout': 5,
+            'inclination_angle': 47.5,
+        },
+        'lie': {
+            'bout': 1,
+            'orientation_angle': 65,
+        },
+        'stand': {
+            'bout': 2,
+            'inclination_angle': 47.5,
+            'movement_threshold': 0.075,
+        },
+        'walk': {
+            'bout': 2,
+            'inclination_angle': 47.5,
+            'movement_threshold': 0.075,
+            'run_threshold': 0.7,
+        },
+        'stairs': {
+            'bout': 5,
+            'inclination_angle': 47.5,
+            'movement_threshold': 0.075,
+            'run_threshold': 0.7,
+            'direction_threshold': 35.0,
+            'stairs_threshold': 5,
+            'anterior_posterior_angle': 20,
+        },
+        'run': {
+            'bout': 2,
+            'inclination_angle': 47.5,
+            'run_threshold': 0.7,
+            'step_frequency': 2.5,
+        },
+        'bicycle': {
+            'bout': 15,
+            'movement_threshold': 0.075,
+            'anterior_posterior_angle': 20,
+            'direction_threshold': 35.0,
+            'inclination_angle': 87.5,
+        },
+        'row': {
+            'bout': 15,
+            'movement_threshold': 0.075,
+            'inclination_angle': 87.5,
+        },
+        'shuffle': {
+            'bout': 2,
+        },
+    },
+    'trunk': {
+        'lie': {
+            'inclination_angle': 47.5,
+            'orientation_angle': 65,
+        }
+    },
 }
 
 ACTIVITIES = {

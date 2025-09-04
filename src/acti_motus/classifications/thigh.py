@@ -30,17 +30,17 @@ class Thigh(Sensor):
         inclination = df['inclination']
         z = df['z']
 
-        invalid_windows = inclination.rolling(window=window, step=step, min_periods=min_periods).quantile(0.02) > 45
-
-        invalid_points_mask = pd.Series(df.index.map(invalid_windows), index=df.index, dtype='boolean').ffill()
-        valid_points = z.loc[~invalid_points_mask & (inclination > 45)]
+        outliers = inclination.rolling(window=window, step=step, min_periods=min_periods).quantile(0.02) > 45
+        outliers_mask = pd.Series(df.index.map(outliers), index=df.index, dtype='boolean').ffill()
+        valid_points = z.loc[~outliers_mask & (inclination > 45)]
 
         if valid_points.empty:
             logger.warning('Not enough data to check inside out flip. Skipping.')
             return False
 
         mdn = np.median(valid_points)
-        flip = True if mdn > 0 else False
+
+        flip = True if (mdn > 0.1) else False
 
         if flip:
             logger.warning(f'Inside out flip detected (median z: {mdn:.2f}).')
@@ -191,9 +191,11 @@ class Thigh(Sensor):
         df: pd.DataFrame,
         bout: int,
         movement_threshold: float,
+        inclination_angle: float,
         **kwargs,
     ) -> pd.Series:
-        valid = (90 < df['inclination']) & (movement_threshold < df['sd_x'])
+        # NOTE: Do we miss the "mean anterior-posterior angle is greater than 40°"?
+        valid = (inclination_angle < df['inclination']) & (movement_threshold < df['sd_x'])
         valid = self._median_filter(valid, bout)
         valid.name = 'row'
 
@@ -204,12 +206,14 @@ class Thigh(Sensor):
         df: pd.DataFrame,
         bout: int,
         movement_threshold: float,
+        inclination_angle: float,
+        anterior_posterior_angle: float,
         direction_threshold: float,
         **kwargs,
     ) -> pd.Series:
         valid = (
-            ((direction_threshold - 15) < df['direction'])
-            & (df['inclination'] < 90)
+            ((anterior_posterior_angle) < df['direction'])
+            & (df['inclination'] < inclination_angle)
             & (movement_threshold < df['sd_x'])
         )
 
@@ -225,9 +229,12 @@ class Thigh(Sensor):
         self,
         df: pd.DataFrame,
         run_threshold: float,
+        anterior_posterior_angle: float,
         stairs_threshold: float,
     ) -> float:
-        valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (df['direction'] < 25)
+        valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (
+            df['direction'] < anterior_posterior_angle
+        )
 
         valid = df.loc[valid, 'direction']
 
@@ -250,9 +257,10 @@ class Thigh(Sensor):
         run_threshold: float,
         direction_threshold: float,
         stairs_threshold: float,
+        anterior_posterior_angle: float,
         **kwargs,
     ) -> tuple[pd.Series, float]:
-        stairs_threshold = self._get_stairs_threshold(df, run_threshold, stairs_threshold)
+        stairs_threshold = self._get_stairs_threshold(df, run_threshold, anterior_posterior_angle, stairs_threshold)
 
         valid = (
             (stairs_threshold < df['direction'])

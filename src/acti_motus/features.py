@@ -433,7 +433,7 @@ class Features:
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
 
         df = self._compute(
-            df,
+            df.iloc[:, :3],
             **kwargs,
         )
         df = df.loc[(df.index >= start) & (df.index < end)]

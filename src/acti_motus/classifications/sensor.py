@@ -178,7 +178,7 @@ class Sensor(ABC):
             return False
 
         mdn = np.median(valid_points['x'])
-        flip = True if mdn < 0 else False
+        flip = True if (mdn < -0.1) else False
 
         if flip:
             logger.warning(f'Upside down flip detected (median x: {mdn:.2f}).')
