@@ -69,7 +69,7 @@ print(activities)
 
 exposures = Exposures().compute(df)
 print(exposures)
-#>                                    sedentary           standing            walking
+#>                                    sedentary           standing            on_feet
 #> datetime  
 #> 2024-09-02 00:00:00+00:00    0 days 09:12:21    0 days 04:34:03    0 days 01:26:00
 #> 2024-09-03 00:00:00+00:00    0 days 17:05:21    0 days 04:11:19    0 days 01:30:02
