@@ -108,6 +108,54 @@ class Features:
 
         return df
 
+    # def _resample_poly(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
+    #     """Resamples a DataFrame using the polynomial method."""
+
+    #     input_fs = int(sampling_frequency)
+    #     target_fs = self.system_frequency
+
+    #     frac_gcd = gcd(input_fs, target_fs)
+    #     up = int(target_fs // frac_gcd)
+    #     down = int(input_fs // frac_gcd)
+
+    #     start = df.index[0]
+    #     end = df.index[-1]
+
+    #     resampled = signal.resample_poly(df, up, down)
+
+    #     df = pd.DataFrame(
+    #         resampled,
+    #         columns=df.columns,
+    #         index=pd.date_range(start=start, end=end, periods=len(resampled)),
+    #         dtype=np.float32,
+    #     )
+
+    #     return df
+
+    # def _resample_resampy(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
+    #     """Resamples a DataFrame using the resampy library."""
+    #     time = df.index
+    #     acc_data = [
+    #         resampy.resample(df[col].values, sampling_frequency, self.system_frequency, parallel=True)
+    #         for col in df.columns
+    #     ]
+    #     acc_data = np.column_stack(acc_data)
+
+    #     n_epochs = len(acc_data)
+
+    #     start, end = time[0], time[-1]
+    #     time = pd.date_range(start=start, end=end, periods=n_epochs)
+    #     time.name = 'datetime'
+
+    #     df = pd.DataFrame(
+    #         acc_data,
+    #         index=time,
+    #         columns=df.columns,
+    #         dtype=np.float32,
+    #     )
+
+    #     return df
+
     def resampling(self, df: pd.DataFrame, sampling_frequency: float, tolerance=1) -> pd.DataFrame:
         """Resamples a DataFrame to the system frequency if necessary."""
 
@@ -119,6 +167,8 @@ class Features:
             return df
 
         df = self._resample_fft(df)
+        # df = self._resample_resampy(df, sampling_frequency)
+        # df = self._resample_poly(df, sampling_frequency)
 
         return df
 

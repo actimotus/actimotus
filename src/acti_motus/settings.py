@@ -142,6 +142,16 @@ ACTIVITIES = {
     12: 'fast-walk',
 }
 
+FUSED_ACTIVITIES = {
+    'lie': 'sedentary',
+    'sit': 'sedentary',
+    'shuffle': 'stand',
+    'fast-walk': 'walk',
+    'stairs': 'walk',
+    'kneel': 'sedentary',
+    'squat': 'stand',
+}
+
 FEATURES = [
     'x',
     'y',

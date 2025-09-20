@@ -28,10 +28,12 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "altair>=5.5.0",
     "numpy>=2.2.6",
     "pandas>=2.2.3",
     "pyarrow>=20.0.0",
     "scikit-digital-health>=0.17.9",
+    "vegafusion>=2.0.2",
 ]
 
 [project.urls]
