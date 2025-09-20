@@ -443,6 +443,22 @@ class Thigh(Sensor):
 
         return df['steps'].astype(np.float32)
 
+    def get_fast_walking_and_running(
+        self, df: pd.DataFrame, fast_walk_steps: float, running_frequency: float, bouts_length: dict[str, int]
+    ) -> None:
+        df.loc[(df['activity'].isin(['walk'])) & (df['steps'] > running_frequency), 'activity'] = 'run'
+        for activity in ['run', 'walk']:
+            df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])
+
+        df['activity'] = df['activity'].cat.add_categories(['fast-walk'])
+        window = f'{bouts_length["fast-walk"]}s'
+        fast_walk = (
+            df.loc[df['activity'] == 'walk', 'steps'].groupby(pd.Grouper(freq=window), observed=False).transform('sum')  # type: ignore
+        ) > fast_walk_steps
+        fast_walk = fast_walk[fast_walk]
+
+        df.loc[fast_walk.index, 'activity'] = 'fast-walk'
+
     def compute_activities(
         self,
         df: pd.DataFrame,
@@ -488,9 +504,12 @@ class Thigh(Sensor):
 
         df['steps'] = self.get_steps(df)
 
-        df.loc[(df['activity'] == 'walk') & (df['steps'] > config['run']['step_frequency']), 'activity'] = 'run'
-        for activity in ['run', 'walk']:
-            df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])
+        self.get_fast_walking_and_running(
+            df,
+            config['fast-walk']['steps'],
+            config['run']['step_frequency'],
+            bouts_length,
+        )
 
         df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
         df.rename(

@@ -50,10 +50,8 @@ class Features:
     overlap: timedelta = timedelta(minutes=15)
 
     def __post_init__(self):
-        """Initializes the Features class after its construction.
+        """Initializes the Features class after its construction."""
 
-        Converts size and overlap to timedelta objects if they are provided as strings.
-        """
         if isinstance(self.size, str):
             self.size = pd.Timedelta(self.size).to_pytimedelta()
 
@@ -61,43 +59,16 @@ class Features:
             self.overlap = pd.Timedelta(self.overlap).to_pytimedelta()
 
     def get_nyquist_freq(self, sampling_frequency: float) -> float:
-        """Calculates the Nyquist frequency.
+        """Calculates the Nyquist frequency."""
 
-        Args:
-            sampling_frequency: The sampling frequency.
-
-        Returns:
-            The Nyquist frequency.
-        """
         return sampling_frequency / 2
 
     @staticmethod
     def get_sampling_frequency(
         df: pd.DataFrame, *, samples: int | None = 30_000, round_to_nearest: float | None = 0.5
     ) -> float:
-        """Calculates the sampling frequency of a time-series DataFrame.
-        This function determines the sampling frequency by finding the mode of the
-        time differences between consecutive samples in the DataFrame's index.
-        The calculation can be performed on a subset of the data for
-        efficiency.
+        """Calculates the sampling frequency of a time-series DataFrame."""
 
-        Args:
-            df (pd.DataFrame): The input DataFrame with a time-based index.
-            samples (int | None, optional): The number of initial samples to use for
-                the calculation. If None, the entire DataFrame is used.
-            round_to_nearest (float | None, optional): The value to which the final
-                frequency is rounded. For example, 0.5 will round to the nearest
-                0.5 Hz. If None or non-positive, no rounding is performed.
-
-        Returns:
-            float: The estimated sampling frequency in Hertz (Hz).
-
-        Raises:
-            ValueError: If the DataFrame contains fewer than two samples, making
-                frequency calculation impossible.
-            ValueError: If the calculated time intervals are non-positive,
-                indicating a non-monotonic or invalid time index.
-        """
         time_subset = df.index[:samples] if samples else df.index
 
         if len(time_subset) < 2:
@@ -120,14 +91,8 @@ class Features:
         return sf
 
     def _resample_fft(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Resamples a DataFrame using the FFT method.
+        """Resamples a DataFrame using the FFT method."""
 
-        Args:
-            df: The input DataFrame.
-
-        Returns:
-            The resampled DataFrame.
-        """
         start = df.index[0]
         end = df.index[-1]
 
@@ -144,16 +109,8 @@ class Features:
         return df
 
     def resampling(self, df: pd.DataFrame, sampling_frequency: float, tolerance=1) -> pd.DataFrame:
-        """Resamples a DataFrame to the system frequency if necessary.
+        """Resamples a DataFrame to the system frequency if necessary."""
 
-        Args:
-            df: The input DataFrame.
-            sampling_frequency: The sampling frequency of the input DataFrame.
-            tolerance: The tolerance for comparing sampling frequencies.
-
-        Returns:
-            The resampled DataFrame.
-        """
         if math.isclose(sampling_frequency, self.system_frequency, abs_tol=tolerance):
             logger.info(
                 f'Sampling frequency is {self.system_frequency} Hz, no resampling needed.',
@@ -166,27 +123,7 @@ class Features:
         return df
 
     def get_hl_ratio(self, df: pd.DataFrame) -> pd.Series:
-        """Calculates the High-Low Ratio (HL-Ratio) from the Z-axis accelerometer data.
-        This method processes the 'acc_z' signal by first separating it into
-        high-frequency and low-frequency components using third-order low-pass and
-        high-pass Butterworth filters with a cutoff frequency of 1 Hz.
-
-        The absolute values of these filtered signals are then processed using a
-        sliding window. The mean of the high-frequency components and the mean
-        of the low-frequency components are calculated for each window. The
-        HL-Ratio is the ratio of the mean of the high-frequency component to the
-        mean of the low-frequency component. Division by zero is handled by
-        returning zero for that window.
-
-        Args:
-            df (pd.DataFrame): Input DataFrame containing the time-series data.
-                               Must include an 'acc_z' column for the Z-axis
-                               accelerometer readings.
-
-        Returns:
-            pd.Series: A pandas Series named 'hl_ratio' containing the
-                       calculated high-low ratio for each window.
-        """
+        """Calculates the High-Low Ratio (HL-Ratio) from the Z-axis accelerometer data."""
 
         order = 3
         cut_off = 1
@@ -220,14 +157,8 @@ class Features:
         return pd.Series(hl_ratio, name='hl_ratio')
 
     def _get_steps_feature(self, arr: np.ndarray) -> np.ndarray:
-        """Computes the steps feature from an array.
+        """Computes the steps feature from an array."""
 
-        Args:
-            arr: The input array.
-
-        Returns:
-            An array containing the steps feature.
-        """
         window = self.system_frequency * 4  # 120 (system frequency = 30) samples equal to 2 seconds
         steps_window = 4 * window  # 480 (system frequency = 30) samples equal to 8 seconds
         half_size = window * 2  # 240 (system frequency = 30) samples equal to 4 seconds
@@ -245,29 +176,7 @@ class Features:
         return np.argmax(magnitudes, axis=1)
 
     def get_steps_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculates walking and running features from accelerometer data.
-        This method processes the x-axis accelerometer signal ('acc_x') to
-        extract features indicative of walking and running. It applies a
-        series of Butterworth filters to isolate the frequency bands
-        typically associated with these activities.
-
-        The process involves:
-        1. Applying a 6th-order low-pass filter with a 2.5 Hz cutoff.
-        2. Applying a 6th-order high-pass filter with a 1.5 Hz cutoff to the
-           result of step 1 to isolate the 'walk' signal.
-        3. Applying a 6th-order high-pass filter with a 3 Hz cutoff to the
-           'walk' signal to isolate the 'run' signal.
-        4. Computing a feature value for both the 'walk' and 'run' signals
-           using frequency component with the highest magnitude.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing accelerometer data.
-                               It must have an 'acc_x' column.
-
-        Returns:
-            pd.DataFrame: A new DataFrame with two columns: 'walk_feature' and
-                          'run_feature'.
-        """
+        """Calculates walking and running features from accelerometer data."""
 
         axis_x = df['acc_x'].values
         nyquist_frequency = self.get_nyquist_freq(self.system_frequency)
@@ -291,14 +200,7 @@ class Features:
         return df
 
     def get_tensor(self, arr: np.ndarray) -> np.ndarray:
-        """Creates a tensor from an array.
-
-        Args:
-            arr: The input array.
-
-        Returns:
-            A tensor.
-        """
+        """Creates a tensor from an array."""
         pb = np.vstack((arr[: self.system_frequency], arr))
         pa = np.vstack((arr, arr[-self.system_frequency :]))
         n = pb.shape[0] // self.system_frequency
@@ -312,21 +214,7 @@ class Features:
         return tensor[:, :-1, :]
 
     def downsampling(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Downsamples the input signal data and computes various statistical features.
-        For each window, it calculates the mean, standard deviation, sum, and sum of squares for each axis
-        (x, y, z), as well as the sum of the dot product between the x and z axes.
-
-        Args:
-            df (pd.DataFrame): The input DataFrame containing time-series signal
-                data, expected to have columns representing different axes.
-
-        Returns:
-            pd.DataFrame: A new DataFrame where each row corresponds to a
-                window of the original signal. The columns contain the
-                computed features: 'x', 'y', 'z' (mean values), 'sd_x',
-                'sd_y', 'sd_z', 'sum_x', 'sum_y', 'sum_z', 'sq_sum_x',
-                'sq_sum_y', 'sq_sum_z', and 'sum_dot_xz'.
-        """
+        """Downsamples the input signal data and computes various statistical features."""
 
         axes = df.values
 
@@ -365,29 +253,7 @@ class Features:
         return df
 
     def check_format(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Validates and standardizes the input accelerometer DataFrame.
-        This method performs a series of checks to ensure the input DataFrame
-        conforms to the expected format for accelerometer data.
-
-        The validation ensures that the input is a non-empty pandas DataFrame with
-        exactly three numeric columns and a datetime index. After validation, it
-        renames the columns to ['acc_x', 'acc_y', 'acc_z'].
-
-        Args:
-            df (pd.DataFrame): The input DataFrame to validate. It is expected
-                to have a datetime index and three numeric columns representing
-                the x, y, and z axes of an accelerometer.
-
-        Returns:
-            pd.DataFrame: The validated and standardized DataFrame with columns
-                renamed to ['acc_x', 'acc_y', 'acc_z'].
-
-        Raises:
-            TypeError: If the input is not a pandas DataFrame.
-            ValueError: If the DataFrame is empty, does not have exactly 3
-                columns, has a non-datetime index, or contains non-numeric
-                column data.
-        """
+        """Validates and standardizes the input accelerometer DataFrame."""
 
         if not self.validation:
             return df
@@ -420,15 +286,8 @@ class Features:
         df: pd.DataFrame,
         **kwargs: Any,
     ) -> pd.DataFrame:
-        """Computes features for a single chunk of data.
+        """Computes features for a single chunk of data."""
 
-        Args:
-            df: The input DataFrame chunk.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            A DataFrame with computed features for the chunk.
-        """
         not_overlaps = df[~df['overlap']]
         start, end = not_overlaps.index[0], not_overlaps.index[-1]
 
@@ -441,15 +300,8 @@ class Features:
         return df
 
     def _compute_chunks(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
-        """Computes features for a DataFrame in chunks.
+        """Computes features for a DataFrame in chunks."""
 
-        Args:
-            df: The input DataFrame.
-            sampling_frequency: The sampling frequency of the DataFrame.
-
-        Returns:
-            A DataFrame with computed features.
-        """
         chunks = DataFrameIterator(df, size=self.size, overlap=self.overlap)
         computed = []
 
@@ -462,15 +314,8 @@ class Features:
         return computed
 
     def _compute(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
-        """Computes features for a DataFrame.
+        """Computes features for a DataFrame."""
 
-        Args:
-            df: The input DataFrame.
-            sampling_frequency: The sampling frequency of the DataFrame.
-
-        Returns:
-            A DataFrame with computed features.
-        """
         df = self.resampling(df, sampling_frequency)
         hl_ratio = self.get_hl_ratio(df)
         steps_features = self.get_steps_features(df)
@@ -492,7 +337,7 @@ class Features:
         return df
 
     def compute(self, df: pd.DataFrame, sampling_frequency: float | None = None) -> pd.DataFrame:
-        """Computes features from the provided accelerometer data DataFrame.
+        """Computes features from accelerometer data DataFrame.
         This method serves as the main entry point for feature computation. It handles
         pre-processing steps like data format validation, sampling frequency
         determination, and optional calibration before dispatching the computation
@@ -561,15 +406,7 @@ class Features:
         timestamps: np.ndarray,
         data: np.ndarray,
     ) -> pd.DataFrame:
-        """Converts raw SENS data to a DataFrame.
-
-        Args:
-            timestamps: An array of timestamps.
-            data: An array of accelerometer data.
-
-        Returns:
-            A DataFrame created from the SENS data.
-        """
+        """Converts raw SENS data to a DataFrame."""
         df = pd.DataFrame(
             data,
             index=timestamps,
@@ -589,14 +426,8 @@ class Features:
         np.ndarray,
         np.ndarray,
     ]:
-        """Converts a DataFrame to the SENS format.
+        """Converts a DataFrame to the SENS format."""
 
-        Args:
-            df: The input DataFrame.
-
-        Returns:
-            A tuple containing timestamps and data arrays.
-        """
         df = df / SENS__NORMALIZATION_FACTOR
         timestamps = (df.index.astype(np.int64) // 10**6).values
         timestamps = np.array([timestamps])

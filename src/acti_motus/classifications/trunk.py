@@ -22,7 +22,7 @@ class Trunk(Sensor):
         default_angle = np.array([27, 27, 0])
         angle_status = Calculation.DEFAULT
 
-        walk = df[(~df['non-wear']) & (df['activity'] == 'walk')]
+        walk = df[(~df['non-wear']) & (df['activity'].isin(['walk', 'fast-walk']))]
 
         if not walk.empty:
             y = np.median(walk['direction']) - 6

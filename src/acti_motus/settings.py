@@ -19,6 +19,10 @@ LEGACY_CONFIG = {
             'movement_threshold': 0.1,
             'run_threshold': 0.72,
         },
+        'fast-walk': {
+            'bout': 60,
+            'steps': 100,
+        },
         'stairs': {
             'bout': 5,
             'inclination_angle': 45,
@@ -79,6 +83,10 @@ CONFIG = {
             'movement_threshold': 0.075,
             'run_threshold': 0.7,
         },
+        'fast-walk': {
+            'bout': 2,
+            'steps': 3.5,
+        },
         'stairs': {
             'bout': 5,
             'inclination_angle': 47.5,
@@ -131,6 +139,7 @@ ACTIVITIES = {
     9: 'row',
     10: 'kneel',
     11: 'squat',
+    12: 'fast-walk',
 }
 
 FEATURES = [
