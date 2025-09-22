@@ -143,6 +143,10 @@ class Sensor(ABC):
         self,
         df: pd.DataFrame,
     ) -> pd.DataFrame:
+        # if (df.index[-1] - df.index[0]) < timedelta(minutes=30):
+        #     logger.warning('Not enough data to check sensor orientation. Skipping.')
+        #     return df
+
         df = df.copy()
         upside_down = self.check_upside_down_flip(df)
         inside_out = self.check_inside_out_flip(df)
@@ -237,11 +241,11 @@ class Sensor(ABC):
                     value, status = self.calculate_reference_angle(bout_df)
                     expires = None
 
-                angle = Angle(value, expires, status)
+                angle = Angle(value, expires, status)  # type: ignore
                 prev_angle_value = angle.value
 
             angles.append(angle)
-            df.loc[bout_df.index] = self.rotate_by_reference_angle(bout_df, angle.value)
+            df.loc[bout_df.index] = self.rotate_by_reference_angle(bout_df, angle.value)  # type: ignore
 
         bouts['angle'] = pd.Series(angles, dtype=object)
 

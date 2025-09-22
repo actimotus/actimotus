@@ -469,8 +469,10 @@ class Thigh(Sensor):
         df = df.copy()
         sf = df['sf'].mode().values[0].item()
 
+        df = df.asfreq('1s', fill_value=np.nan)
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         non_wear = self.get_non_wear(df)
+
         bouts = references.get_bouts(non_wear, 'thigh')
 
         if self.orientation:
@@ -507,7 +509,7 @@ class Thigh(Sensor):
         self.get_fast_walking_and_running(
             df,
             config['fast-walk']['steps'],
-            config['run']['step_frequency'],
+            config['run']['steps'],
             bouts_length,
         )
 

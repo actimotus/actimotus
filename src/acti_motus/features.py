@@ -363,28 +363,46 @@ class Features:
 
         return computed
 
+    def segments(self, df: pd.DataFrame, duration: str | timedelta) -> Any:
+        """Splits a DataFrame into segments based on time gaps."""
+        td = df.index.to_series().diff()
+        duration = pd.Timedelta(duration)
+
+        diff = td > duration
+        gaps = diff.cumsum()
+        gaps.name = 'gaps'
+
+        return df.groupby(gaps)
+
     def _compute(self, df: pd.DataFrame, sampling_frequency: float) -> pd.DataFrame:
         """Computes features for a DataFrame."""
 
-        df = self.resampling(df, sampling_frequency)
-        hl_ratio = self.get_hl_ratio(df)
-        steps_features = self.get_steps_features(df)
-        downsampled = self.downsampling(df)
+        dfs = []
 
-        n = min(len(hl_ratio), len(steps_features), len(downsampled))
-        start = df.index[0].ceil('s')
-        df = pd.concat([downsampled, hl_ratio, steps_features], axis=1)
-        df = df.iloc[:n]
-        df.index = pd.date_range(
-            start=start,
-            periods=n,
-            freq=timedelta(seconds=1),
-            name='datetime',
-        )
-        df['sf'] = sampling_frequency
+        for name, segment in self.segments(df, '5s'):
+            segment = self.resampling(segment, sampling_frequency)
+            hl_ratio = self.get_hl_ratio(segment)
+            steps_features = self.get_steps_features(segment)
+            downsampled = self.downsampling(segment)
+
+            n = min(len(hl_ratio), len(steps_features), len(downsampled))
+            start = segment.index[0].ceil('s')
+            segment = pd.concat([downsampled, hl_ratio, steps_features], axis=1)
+            segment = segment.iloc[:n]
+            segment.index = pd.date_range(
+                start=start,
+                periods=n,
+                freq=timedelta(seconds=1),
+                name='datetime',
+            )
+            dfs.append(segment)
+
+        dfs = pd.concat(dfs)
+        dfs['sf'] = sampling_frequency
+
         logger.info('Features computed.')
 
-        return df
+        return dfs
 
     def compute(self, df: pd.DataFrame, sampling_frequency: float | None = None) -> pd.DataFrame:
         """Computes features from accelerometer data DataFrame.

@@ -119,7 +119,7 @@ class Exposures:
         exposure = {
             'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
             'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'kneel']), 'time'),
-            'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
+            'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle', 'squat']), 'time'),
             'on_feet': self._get_exposure(
                 df, df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs', 'squat']), 'time'
             ),
@@ -158,11 +158,6 @@ class Exposures:
         )
         df = df.apply(pd.Timedelta, unit='s').unstack()
         return df[columns]
-
-    def _fuse_activities(self, activities: pd.Series) -> pd.Series:
-        activities = activities.astype(str).replace(FUSED_ACTIVITIES)
-
-        return activities
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
@@ -237,10 +232,10 @@ class Exposures:
         return heatmap
 
     def plot(self, df: pd.DataFrame, language: dict[str, Any] | None = None) -> alt.Chart:
+        activities = df['activity']
+
         if self.fused:
-            activities = self._fuse_activities(df['activity'])
-        else:
-            activities = df['activity']
+            activities = activities.astype(str).replace(FUSED_ACTIVITIES)
 
         if language is None:
             language = PLOT_FUSED_LANG if self.fused else PLOT_LANG

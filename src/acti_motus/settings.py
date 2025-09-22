@@ -36,7 +36,7 @@ LEGACY_CONFIG = {
             'bout': 2,
             'inclination_angle': 45,
             'run_threshold': 0.72,
-            'step_frequency': 2.5,
+            'steps': 2.5,
         },
         'bicycle': {
             'bout': 15,
@@ -81,17 +81,17 @@ CONFIG = {
             'bout': 2,
             'inclination_angle': 47.5,
             'movement_threshold': 0.075,
-            'run_threshold': 0.7,
+            'run_threshold': 0.65,
         },
         'fast-walk': {
-            'bout': 2,
-            'steps': 3.5,
+            'bout': 15,
+            'steps': 27,
         },
         'stairs': {
             'bout': 5,
             'inclination_angle': 47.5,
             'movement_threshold': 0.075,
-            'run_threshold': 0.7,
+            'run_threshold': 0.65,
             'direction_threshold': 35.0,
             'stairs_threshold': 5,
             'anterior_posterior_angle': 20,
@@ -99,8 +99,8 @@ CONFIG = {
         'run': {
             'bout': 2,
             'inclination_angle': 47.5,
-            'run_threshold': 0.7,
-            'step_frequency': 2.5,
+            'run_threshold': 0.65,
+            'steps': 2.5,
         },
         'bicycle': {
             'bout': 15,
@@ -145,11 +145,11 @@ ACTIVITIES = {
 FUSED_ACTIVITIES = {
     'lie': 'sedentary',
     'sit': 'sedentary',
+    'kneel': 'sedentary',
     'shuffle': 'stand',
+    'squat': 'stand',
     'fast-walk': 'walk',
     'stairs': 'walk',
-    'kneel': 'sedentary',
-    'squat': 'stand',
 }
 
 FEATURES = [
