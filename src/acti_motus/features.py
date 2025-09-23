@@ -379,7 +379,10 @@ class Features:
 
         dfs = []
 
-        for name, segment in self.segments(df, '5s'):
+        for name, segment in self.segments(df, timedelta(seconds=1)):
+            if segment.index[-1] - segment.index[0] < timedelta(seconds=5):
+                continue
+
             segment = self.resampling(segment, sampling_frequency)
             hl_ratio = self.get_hl_ratio(segment)
             steps_features = self.get_steps_features(segment)
