@@ -435,8 +435,8 @@ class Thigh(Sensor):
         scale = self.system_frequency / 2 * np.linspace(0, 1, 256)
 
         df['steps'] = 0
-        df.loc[df['activity'].isin(['walk', 'stairs']) & df['walk_feature'].notna(), 'steps'] = df['walk_feature']
-        df.loc[(df['activity'] == 'run') & df['run_feature'].notna(), 'steps'] = df['run_feature']
+        df.loc[df['activity'].isin(['walk', 'stairs']), 'steps'] = df['walk_feature']
+        df.loc[(df['activity'] == 'run'), 'steps'] = df['run_feature']
         df['steps'] = scale[df['steps']]
         df['steps'] = medfilt(df['steps'], 3)
 
@@ -467,8 +467,7 @@ class Thigh(Sensor):
 
         df = df.copy()
         sf = df['sf'].mode().values[0].item()
-
-        df = df.asfreq('1s', fill_value=np.nan)
+        df = df.asfreq('1s', fill_value=0)
         df[['inclination', 'side_tilt', 'direction']] = self.get_angles(df)
         non_wear = self.get_non_wear(df)
 
