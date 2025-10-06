@@ -118,10 +118,10 @@ class Exposures:
     def _get_exposures(self, df: pd.DataFrame) -> pd.Series:
         exposure = {
             'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
-            'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'kneel']), 'time'),
-            'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle', 'squat']), 'time'),
+            'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'time'),
+            'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
             'on_feet': self._get_exposure(
-                df, df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs', 'squat']), 'time'
+                df, df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs']), 'time'
             ),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'kneel']), 'count'),
             'lpa': self._get_exposure(
@@ -166,7 +166,13 @@ class Exposures:
         if not self.fused:
             exposure = pd.concat([exposure, activities], axis=1)
 
-        exposure.insert(0, 'valid', (activities['walk'].notna()) & (activities['walk'] >= pd.Timedelta(minutes=5)))
+        valid = (activities['stand'] + activities['walk']) >= pd.Timedelta(minutes=15)
+
+        exposure.insert(
+            0,
+            'valid',
+            valid,
+        )
 
         return exposure
 
@@ -246,10 +252,7 @@ class Exposures:
 
     def quality_check(self, df: pd.DataFrame) -> pd.DataFrame:
         exposures = self.compute(df)
-        valid_dates = exposures.loc[
-            (exposures['walk'].notna()) & (exposures['walk'] >= pd.Timedelta(minutes=5))
-        ].index.normalize()  # type: ignore
-
+        valid_dates = exposures.loc[exposures['valid']].index.normalize()  # type: ignore
         df['valid'] = df.index.normalize().isin(valid_dates)  # type: ignore
 
         return df
