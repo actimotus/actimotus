@@ -161,10 +161,12 @@ class Exposures:
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
+        activities = self._get_activities(df['activity'], ACTIVITIES.values())  # type: ignore
 
         if not self.fused:
-            activities = self._get_activities(df['activity'], ACTIVITIES.values())  # type: ignore
             exposure = pd.concat([exposure, activities], axis=1)
+
+        exposure.insert(0, 'valid', (activities['walk'].notna()) & (activities['walk'] >= pd.Timedelta(minutes=5)))
 
         return exposure
 
@@ -241,3 +243,13 @@ class Exposures:
             language = PLOT_FUSED_LANG if self.fused else PLOT_LANG
 
         return self._get_plot(activities, language)
+
+    def quality_check(self, df: pd.DataFrame) -> pd.DataFrame:
+        exposures = self.compute(df)
+        valid_dates = exposures.loc[
+            (exposures['walk'].notna()) & (exposures['walk'] >= pd.Timedelta(minutes=5))
+        ].index.normalize()  # type: ignore
+
+        df['valid'] = df.index.normalize().isin(valid_dates)  # type: ignore
+
+        return df
