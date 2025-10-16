@@ -81,7 +81,7 @@ Detailed information on Acti-Motus processing and features is available [here](#
 
 ## About Acti4
 
-Developed by Jørgen Skotte, Acti4 was a sophisticated Matlab program designed to process data from multiple accelerometer sensors that participants wore on their thigh, hip, arm, and trunk. The core function of Acti4 was to classify physical activities, such as lying, sitting, standing, or walking. It also offered further calculations to assess a participant's posture by determining arm and trunk inclination. Lastly, these detections could be combined with participant diaries to obtain more contextual information, such as movement behaviour during periods of work and leisure.
+Developed by the Danish National Research Center for Working Environment, Acti4 was a sophisticated Matlab program designed to process data from multiple accelerometer sensors that participants wore on their thigh, hip, arm, and trunk. The core function of Acti4 was to classify physical activities, such as lying, sitting, standing, or walking. It also offered further calculations to assess a participant's posture by determining arm and trunk inclination. Lastly, these detections could be combined with participant diaries to obtain more contextual information, such as movement behaviour during periods of work and leisure.
 
 The development of Acti4 concluded in July 2020 with its final release. Subsequently, the focus was redirected toward a successor project: rewriting the original Acti4 algorithm in Python. This new initiative, known as Motus, is being developed in partnership with SENS Innovation ApS.
 
