@@ -39,6 +39,9 @@ class Activities:
 
         if self.config is None:
             self.config = CONFIG
+        elif type(self.config) == str:
+            if (self.config).upper() == "LEGACY":
+                self.config = LEGACY_CONFIG
 
     def _compute_chunk(
         self,
