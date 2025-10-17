@@ -121,7 +121,9 @@ class Exposures:
             'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'time'),
             'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
             'on_feet': self._get_exposure(
-                df, df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs']), 'time'
+                df,
+                df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs']),
+                'time',
             ),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'kneel']), 'count'),
             'lpa': self._get_exposure(
@@ -151,13 +153,19 @@ class Exposures:
         return exposure
 
     def _get_activities(self, activities: pd.Series, activity_types: list[str]) -> pd.DataFrame:
-        columns = [col for col in activity_types if col in activities.unique() and col != 'non-wear']
-
         df = (
             activities.groupby([pd.Grouper(freq=self.window, sort=True), activities], observed=False).count()  # type: ignore
         )
         df = df.apply(pd.Timedelta, unit='s').unstack()
-        return df[columns]
+
+        # NOTE: This could be done in better way.
+        for col in activity_types:
+            if col not in df.columns:
+                df[col] = pd.Timedelta(0)
+
+        df.drop(columns=['non-wear'], inplace=True)
+
+        return df
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
@@ -166,7 +174,7 @@ class Exposures:
         if not self.fused:
             exposure = pd.concat([exposure, activities], axis=1)
 
-        valid = (activities['stand'] + activities['walk']) >= pd.Timedelta(minutes=15)
+        valid = (activities['stairs'] + activities['walk']) >= pd.Timedelta(minutes=10)
 
         exposure.insert(
             0,
