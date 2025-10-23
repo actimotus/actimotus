@@ -217,14 +217,12 @@ class Sensor(ABC):
         df = df.copy()
         bouts = bouts.copy()
         angles = []
-        prev_angle_value = None
 
         for start, end, non_wear, calibration, angle in bouts.to_numpy():
             bout_df = df[start:end]
 
             if angle:
                 angle.status = AngleStatus.PROPAGATED
-                prev_angle_value = angle.value
 
             elif isinstance(calibration, Calibration):
                 calibration_period = calibration.get_calibration_period(bout_df)
@@ -232,22 +230,20 @@ class Sensor(ABC):
                 status = AngleStatus.CALIBRATION if status == Calculation.AUTOMATIC else AngleStatus.DEFAULT
                 expires = calibration.expires or None
                 angle = Angle(value, expires, status)
-                prev_angle_value = angle.value
 
             else:
-                if non_wear and prev_angle_value:
-                    value, expires, status = prev_angle_value, None, AngleStatus.DEFAULT
-                else:
+                if not non_wear:
                     value, status = self.calculate_reference_angle(bout_df)
                     expires = None
 
-                angle = Angle(value, expires, status)  # type: ignore
-                prev_angle_value = angle.value
+                    angle = Angle(value, expires, status)  # type: ignore
 
             angles.append(angle)
-            df.loc[bout_df.index] = self.rotate_by_reference_angle(bout_df, angle.value)  # type: ignore
 
-        bouts['angle'] = pd.Series(angles, dtype=object)
+            if angle is not None:
+                df.loc[bout_df.index] = self.rotate_by_reference_angle(bout_df, angle.value)  # type: ignore
+
+        bouts['angle'] = pd.Series(angles, dtype=object, index=bouts.index)
 
         return df, bouts
 

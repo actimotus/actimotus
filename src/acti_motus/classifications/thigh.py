@@ -74,10 +74,10 @@ class Thigh(Sensor):
             reference_angle = reference_angle * 0.725 - 5.569  # Correction factor based on RAW data.
 
             if (reference_angle < angle_threshold_lower) or (reference_angle > angle_threshold_upper):
-                reference_angle = default_angle
                 logger.warning(
-                    f'Reference angle {reference_angle:.2f} degrees is outside the threshold range. Using default reference angle: {reference_angle:.2f} degrees.'
+                    f'Reference angle {reference_angle:.2f} degrees is outside the threshold range. Using default reference angle: {default_angle:.2f} degrees.'
                 )
+                reference_angle = default_angle
 
             else:
                 angle_status = Calculation.AUTOMATIC
