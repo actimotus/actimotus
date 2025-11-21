@@ -269,12 +269,18 @@ class Exposures:
         return df
 
     @staticmethod
-    def context(df: pd.DataFrame, intervals: pd.DataFrame, activities: list[str] | None = None) -> pd.Series:
+    def context(
+        df: pd.DataFrame,
+        intervals: pd.DataFrame,
+        context: str,
+        activities: list[str] | None = None,
+    ) -> pd.Series:
         df = df[['activity']].copy()
+        df[context] = False
 
-        for context, start, end in intervals.itertuples(index=False):
+        for start, end in intervals.itertuples(index=False):
             logic = (df.index >= start) & (df.index < end)
             logic = logic & (df['activity'].isin(activities) if activities is not None else logic)
-            df.loc[logic, 'context'] = context
+            df.loc[logic, context] = True
 
-        return df['context'].astype('string')
+        return df[context]
