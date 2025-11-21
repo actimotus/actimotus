@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
@@ -6,6 +7,8 @@ import altair as alt
 import pandas as pd
 
 from .settings import ACTIVITIES, FUSED_ACTIVITIES
+
+logger = logging.getLogger(__name__)
 
 alt.data_transformers.enable('vegafusion')
 
@@ -186,7 +189,6 @@ class Exposures:
 
     def _get_plot(self, activities: pd.Series, lang: dict) -> alt.Chart:
         df = activities.to_frame('activities')
-        df.index = df.index.tz_localize(None)  # type: ignore
 
         start = df.index.min()
         end = df.index.max() + pd.Timedelta(days=1)
@@ -229,6 +231,7 @@ class Exposures:
                         gridColor='gray',
                         gridOpacity=0.1,
                     ),
+                    sort=None,
                 ),
                 color=alt.Color(
                     'activities:N',
@@ -264,3 +267,14 @@ class Exposures:
         df['valid'] = df.index.normalize().isin(valid_dates)  # type: ignore
 
         return df
+
+    @staticmethod
+    def context(df: pd.DataFrame, intervals: pd.DataFrame, activities: list[str] | None = None) -> pd.Series:
+        df = df[['activity']].copy()
+
+        for context, start, end in intervals.itertuples(index=False):
+            logic = (df.index >= start) & (df.index < end)
+            logic = logic & (df['activity'].isin(activities) if activities is not None else logic)
+            df.loc[logic, 'context'] = context
+
+        return df['context'].astype('string')
