@@ -188,30 +188,44 @@ class Exposures:
         return exposure
 
     def _get_plot(self, activities: pd.Series, lang: dict) -> alt.Chart:
-        df = activities.to_frame('activities')
-
-        start = df.index.min()
-        end = df.index.max() + pd.Timedelta(days=1)
-        full_idx = pd.date_range(start=start, end=end, freq='1s', normalize=True)
-        df = df.reindex(full_idx, fill_value='non-wear')
-
         labels = {k: v['text'] for k, v in lang['activities'].items()}
         colors = [v['color'] for k, v in lang['activities'].items()]
+        domain = list(labels.values())
 
-        df['activities'] = df['activities'].astype(str).replace(labels)
-        domain = labels.values()
+        df = activities.to_frame('activity')
 
-        df['datetime'] = df.index
+        start = df.index[0]
+        end = df.index[-1]
+
+        full_idx = pd.date_range(start=start, end=end, freq='1s', name='datetime')
+        df = df.reindex(full_idx, fill_value='non-wear').reset_index()
+
+        df['rle'] = (df['activity'] != df['activity'].shift()).cumsum()
+        df['date'] = df['datetime'].dt.date  # type: ignore
+
+        df = (
+            df.groupby(['rle', 'date'])
+            .agg(
+                activity=('activity', 'first'),
+                start_time=('datetime', 'first'),
+                end_time=('datetime', 'last'),
+            )
+            .reset_index(drop=True)
+        )
+
+        df['duration'] = df['end_time'] - df['start_time']
+        df['duration'] = df['duration'].dt.total_seconds() / 60.0  # duration in minutes # type: ignore
+        df['activity'] = df['activity'].astype(str).replace(labels)
         df['y_label'] = (
-            df['datetime'].dt.strftime('%d-%m-%Y') + ' (' + df['datetime'].dt.day_name().map(lang['weekdays']) + ')'
+            df['start_time'].dt.strftime('%d-%m-%Y') + ' (' + df['start_time'].dt.day_name().map(lang['weekdays']) + ')'  # type: ignore
         )
 
         heatmap = (
-            alt.Chart(df[:-1])
-            .mark_rect()
+            alt.Chart(df)
+            .mark_rect(opacity=1)
             .encode(
                 x=alt.X(
-                    'hoursminutesseconds(datetime):T',
+                    'hoursminutesseconds(start_time):T',
                     title=lang['x'],
                     axis=alt.Axis(
                         labelFontSize=12,
@@ -220,6 +234,7 @@ class Exposures:
                         ticks=True,
                     ),
                 ),
+                x2=alt.X2('hoursminutesseconds(end_time):T'),
                 y=alt.Y(
                     'y_label:O',
                     title=lang['y'],
@@ -234,12 +249,16 @@ class Exposures:
                     sort=None,
                 ),
                 color=alt.Color(
-                    'activities:N',
+                    'activity:N',
                     title=lang['legend'],
                     scale=alt.Scale(domain=domain, range=colors),
                     legend=alt.Legend(labelFontSize=12, titleFontSize=14),
                 ),
-                # tooltip=['hoursminutesseconds(datetime):T', 'activities:N'],
+                tooltip=[
+                    alt.Tooltip('hoursminutesseconds(start_time):T', title='Start Time', format='%H:%M'),
+                    alt.Tooltip('activity:N', title='Activity'),
+                    alt.Tooltip('duration:Q', title='Duration (min)', format='.2f'),
+                ],
             )
             .properties(
                 width=960,
