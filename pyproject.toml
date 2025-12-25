@@ -32,7 +32,6 @@ dependencies = [
     "numpy>=2.2.6",
     "pandas>=2.2.3",
     "pyarrow>=20.0.0",
-    "scikit-digital-health>=0.17.9",
     "vegafusion>=2.0.2",
 ]
 
@@ -44,7 +43,6 @@ Changelog = 'https://github.com/acti-motus/acti-motus/blob/main/CHANGELOG.md'
 
 [dependency-groups]
 dev = [
-    "altair[save]>=5.5.0",
     "ipykernel>=6.29.5",
     "pre-commit>=4.2.0",
     "pyinstrument>=5.0.2",
@@ -52,11 +50,9 @@ dev = [
     "kaleido==0.2.1",
     "nbformat>=5.10.4",
     "openpyxl>=3.1.5",
-    "xlrd>=2.0.2",
     "optuna>=4.5.0",
-    "tqdm>=4.67.1",
-    "markdown-it-py>=4.0.0",
-    "pymupdf>=1.26.4",
+    "labda",
+    "actipy>=3.8.0",
 ]
 
 [tool.hatch.build.targets.sdist]
@@ -96,3 +92,6 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
 ]
+
+[tool.uv.sources]
+labda = { path = "../labda" }

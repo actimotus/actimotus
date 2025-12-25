@@ -433,7 +433,7 @@ class Features:
         sampling_frequency = sampling_frequency or self.get_sampling_frequency(df)
 
         if self.calibrate:
-            df = AutoCalibrate().compute(df, hertz=sampling_frequency)
+            df = AutoCalibrate().compute(df)
 
         if self.chunking:
             return self._compute_chunks(df, sampling_frequency)
