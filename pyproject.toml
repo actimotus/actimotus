@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "acti-motus"
-version = "2.2.0"
+name = "actimotus"
+version = "2.3.0"
 description = "Python-powered activity detection algorithms that build upon Acti4, processing data from multiple accelerometers with a required thigh sensor."
 readme = "README.md"
 authors = [
@@ -36,10 +36,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = 'https://github.com/acti-motus/acti-motus'
-Documentation = 'https://github.com/acti-motus/acti-motus'
-Source = 'https://github.com/acti-motus/acti-motus'
-Changelog = 'https://github.com/acti-motus/acti-motus/blob/main/CHANGELOG.md'
+Homepage = 'https://github.com/actimotus/actimotus'
+Documentation = 'https://github.com/actimotus/actimotus'
+Source = 'https://github.com/actimotus/actimotus'
+Changelog = 'https://github.com/actimotus/actimotus/blob/main/CHANGELOG.md'
 
 [dependency-groups]
 dev = [
@@ -54,6 +54,11 @@ dev = [
     "labda",
     "actipy>=3.8.0",
 ]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.1",
+    "mkdocstrings[python]>=1.0.0",
+]
 
 [tool.hatch.build.targets.sdist]
 # limit which files are included in the sdist (.tar.gz) asset,
@@ -65,7 +70,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/acti_motus"]
+packages = ["src/actimotus"]
 
 [tool.ruff.lint]
 pydocstyle = { convention = 'google' }

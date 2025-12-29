@@ -1,24 +1,24 @@
 <h1 align="center">
-  <a href="https://github.com/acti-motus/acti-motus">
-    <img src="https://github.com/acti-motus/acti-motus/blob/main/docs/acti-motus.png?raw=true" alt="Acti-Motus Logo" height="128px">
+  <a href="https://github.com/actimotus/actimotus">
+    <img src="https://github.com/actimotus/actimotus/blob/main/docs/actimotus.png?raw=true" alt="Acti-Motus Logo" height="128px">
   </a>
 </h1>
 
 <div align="center">
-  <a href="https://pypi.org/project/acti-motus/">
-    <img src="https://img.shields.io/pypi/v/acti-motus" alt="PyPi Latest Release"/>
+  <a href="https://pypi.org/project/actimotus/">
+    <img src="https://img.shields.io/pypi/v/actimotus" alt="PyPi Latest Release"/>
   </a>
-  <a href="https://pypi.org/project/acti-motus/">
-    <img src="https://img.shields.io/pypi/pyversions/acti-motus.svg" alt="Python Versions"/>
+  <a href="https://pypi.org/project/actimotus/">
+    <img src="https://img.shields.io/pypi/pyversions/actimotus.svg" alt="Python Versions"/>
   </a>
-  <a href="https://pepy.tech/projects/acti-motus">
-    <img src="https://static.pepy.tech/badge/acti-motus/month" alt="Monthly Downloads"/>
+  <a href="https://pepy.tech/projects/actimotus">
+    <img src="https://static.pepy.tech/badge/actimotus/month" alt="Monthly Downloads"/>
   </a>
   <a href="#">
     <img src="#" alt="DOI Latest Release"/>
   </a>
-  <a href="https://github.com/acti-motus/acti-motus/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/acti-motus/acti-motus.svg" alt="License"/>
+  <a href="https://github.com/actimotus/actimotus/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/actimotus/actimotus.svg" alt="License"/>
   </a>
 </div>
 
@@ -43,7 +43,7 @@ See [documentation](#) for more details.
 
 ## Installation
 
-Install using `pip install acti-motus`.
+Install using `pip install actimotus`.
 
 ## A Simple Example
 ```python

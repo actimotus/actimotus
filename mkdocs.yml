@@ -1,0 +1,130 @@
+site_name: ActiMotus
+site_url: https://actimotus.josefheidler.cz
+site_description: Python-powered Human Activity Recognition that build upon Acti4, processing data from multiple accelerometers with a requirement for a thigh-worn sensor.
+
+repo_url: https://github.com/actimotus/actimotus
+repo_name: actimotus/actimotus
+
+watch:
+  [mkdocs.yml, src, docs, CHANGELOG.md, LICENSE, CONTRIBUTING.md]
+
+theme:
+  name: material
+  lang: en
+  features:
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.path
+    - navigation.prune
+    - navigation.indexes
+    - toc.follow
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+  palette: 
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: green
+      accent: green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  logo: assets/images/actimotus.png
+  favicon: assets/images/actimotus.png
+
+nav:
+  - Get Started:
+    - Welcome to ActiMotus: index.md
+    - Contributing: contributing.md
+    - Changelog: changelog.md
+  - Reference: reference.md
+  - Example: example.md
+
+not_in_nav: |
+  abbreviations.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/actimotus/actimotus
+      name: ActiMotus on GitHub
+    - icon: fontawesome/solid/globe
+      link: https://actimotus.josefheidler.cz
+      name: ActiMotus Python Package
+
+copyright: Copyright &copy; 2026 Danish National Research Center for Working Environment
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src/actimotus]
+          options:
+            docstring_style: google
+            # docstring_section_style: list
+            show_if_no_docstring: false
+            show_bases: false
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: true
+            # show_root_toc_entry: true
+            separate_signature: true
+            show_signature_annotations: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            unwrap_annotated: true
+            relative_crossrefs: true
+            show_docstring_raises: false
+            filters:
+              - "!^_"
+
+markdown_extensions:
+  - abbr
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - admonition
+  - attr_list
+  - def_list
+  - md_in_html
+  - tables
+  - pymdownx.blocks.caption
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji 
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      pygments_lang_class: true
+      auto_title: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - docs/abbreviations.md
