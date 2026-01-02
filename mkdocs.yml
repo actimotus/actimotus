@@ -88,7 +88,7 @@ plugins:
       default_handler: python
       handlers:
         python:
-          paths: [src/actimotus]
+          paths: [src]
           options:
             docstring_style: google
             # docstring_section_style: list
