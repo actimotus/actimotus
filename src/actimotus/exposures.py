@@ -6,73 +6,49 @@ from typing import Any
 import altair as alt
 import pandas as pd
 
-from .settings import ACTIVITIES, FUSED_ACTIVITIES
+from .settings import ACTIVITIES, FUSED_ACTIVITIES, PLOT, PLOT_FUSED
 
 logger = logging.getLogger(__name__)
 
 alt.data_transformers.enable('vegafusion')
 
 
-PLOT_LANG = {
-    'activities': {
-        'non-wear': {'text': 'Non-wear', 'color': '#BDBDBD'},
-        'lie': {'text': 'Lying', 'color': '#42A5F5'},
-        'sit': {'text': 'Sitting', 'color': '#1565C0'},
-        'stand': {'text': 'Standing', 'color': '#26A69A'},
-        'shuffle': {'text': 'Shuffling', 'color': '#00695C'},
-        'walk': {'text': 'Walking', 'color': '#66BB6A'},
-        'fast-walk': {'text': 'Fast walking', 'color': '#2E7D32'},
-        'run': {'text': 'Running', 'color': '#FF7043'},
-        'stairs': {'text': 'Stairs', 'color': '#D84315'},
-        'bicycle': {'text': 'Bicycling', 'color': '#E53935'},
-        'row': {'text': 'Rowing', 'color': '#EC407A'},
-        'kneel': {'text': 'Kneeling', 'color': '#26C6DA'},
-        'squat': {'text': 'Squatting', 'color': '#00838F'},
-    },
-    'title': '24/7 Movement Behaviour',
-    'x': 'Time',
-    'y': 'Day',
-    'legend': 'Activity',
-    'weekdays': {
-        'Monday': 'Monday',
-        'Tuesday': 'Tuesday',
-        'Wednesday': 'Wednesday',
-        'Thursday': 'Thursday',
-        'Friday': 'Friday',
-        'Saturday': 'Saturday',
-        'Sunday': 'Sunday',
-    },
-}
-
-
-PLOT_FUSED_LANG = {
-    'activities': {
-        'non-wear': {'text': 'Non-wear', 'color': '#BDBDBD'},
-        'sedentary': {'text': 'Sedentary', 'color': '#42A5F5'},
-        'stand': {'text': 'Standing', 'color': '#26A69A'},
-        'walk': {'text': 'Walking', 'color': '#66BB6A'},
-        'run': {'text': 'Running', 'color': '#FF7043'},
-        'bicycle': {'text': 'Bicycling', 'color': '#EF5350'},
-        'row': {'text': 'Rowing', 'color': '#AB47BC'},
-    },
-    'title': '24/7 Movement Behaviour',
-    'x': 'Time',
-    'y': 'Day',
-    'legend': 'Activity',
-    'weekdays': {
-        'Monday': 'Monday',
-        'Tuesday': 'Tuesday',
-        'Wednesday': 'Wednesday',
-        'Thursday': 'Thursday',
-        'Friday': 'Friday',
-        'Saturday': 'Saturday',
-        'Sunday': 'Sunday',
-    },
-}
-
-
 @dataclass
 class Exposures:
+    """Aggregates activity data into summary exposure metrics.
+
+    This class takes the 1-second activity epochs (produced by `Activities`) and
+    calculates aggregate exposure metrics over a specified time window. Metrics
+    include total time spent in specific postures (e.g., Sedentary, MVPA),
+    and frequency of transitions (e.g., sit-to-stand) and also data quality check indicating invalid data.
+
+    It supports generating results as raw DataFrame or visual plot.
+
+    Attributes:
+        window: The time window for aggregation. Accepts a `timedelta` object
+            or a pandas-style string offset (e.g., `'1d'` for daily totals,
+            `'1h'` for hourly). Defaults to daily aggregation.
+        fused: If `True`, granular activity categories are merged into broader
+            semantic groups before calculation. This simplifies the output by
+            combining physiologically similar states.
+
+            **Fusion Mappings:**
+
+            * **Sedentary**: Combines *lie*, *sit*, and *kneel*.
+            * **Standing**: Combines *stand*, *squat*, and *shuffle*.
+            * **Walking**: Combines *walk*, *fast-walk*, and *stairs* climbing.
+
+    Examples:
+        Standard daily exposures with full granular categories:
+
+        >>> exposures = Exposures()
+        >>> # results = exposures.compute(activities)
+
+        Weekly exposures with fused categories (grouping all walking types):
+
+        >>> exposures = Exposures(window='7d', fused=True)
+    """
+
     window: str | timedelta = '1d'
     fused: bool = False
 
@@ -171,6 +147,35 @@ class Exposures:
         return df
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Calculates exposure metrics and validity flags for the given activity data.
+
+        This method aggregates the input time-series based on the configured
+        `window` size (e.g., daily). It computes durations for each activity
+        category and determines if the monitoring period is considered "valid."
+
+        **Validity Criteria:**
+        A window is marked as `valid` (True) if the subject performed at least
+        **10 minutes** of active movement (Stairs + Walk) within that period.
+
+        Args:
+            df: A DataFrame containing 1-second activity epochs. It must be
+                indexed by a `DatetimeIndex` and contain an `'activity'` column.
+
+        Returns:
+            A DataFrame indexed by the time window (e.g., each day), containing:
+
+            * **valid**: Boolean flag indicating if the window met the
+                activity threshold.
+            * **[Activity Names]**: Columns for each activity type (e.g., 'sit',
+                'stand', 'walk'), containing the total duration (`timedelta`)
+                spent in that state.
+            * **[Fused Categories]**: If `fused=True`, contains broader
+                categories like 'sedentary' instead of granular ones.
+
+        Examples:
+            >>> exposures = Exposures(window='1d', fused=False)
+            >>> results = exposures.compute(activity_epochs_df)
+        """
         exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
         activities = self._get_activities(df['activity'], ACTIVITIES.values())  # type: ignore
 
@@ -212,6 +217,9 @@ class Exposures:
             )
             .reset_index(drop=True)
         )
+
+        df['start_time'] = df['start_time'].dt.tz_localize(None)
+        df['end_time'] = df['end_time'].dt.tz_localize(None)
 
         df['duration'] = df['end_time'] - df['start_time']
         df['duration'] = df['duration'].dt.total_seconds() / 60.0  # duration in minutes # type: ignore
@@ -270,13 +278,35 @@ class Exposures:
         return heatmap
 
     def plot(self, df: pd.DataFrame, language: dict[str, Any] | None = None) -> alt.Chart:
+        """Generates an interactive Gantt-style chart of the activity timeline.
+
+        This method visualizes the 1-second activity epochs. If `fused` is enabled
+        on this instance, the plot will automatically group similar activities
+        (e.g., 'walk', 'stairs' -> 'Walking') and use the simplified color scheme.
+
+        Args:
+            df: The input DataFrame containing 1-second activity epochs. Must
+                contain an `'activity'` column.
+            language: A configuration dictionary to customize chart labels and
+                colors (e.g., for localization). If `None`, defaults to the
+                standard English configuration.
+
+        Returns:
+            An Altair Chart object representing the activity timeline. To display it in a notebook, simply let the object return or call `.display()`.
+
+        Examples:
+            Basic usage with default English labels:
+
+            >>> chart = exposures.plot(df)
+            >>> chart.save('timeline.html')
+        """
         activities = df['activity']
 
         if self.fused:
             activities = activities.astype(str).replace(FUSED_ACTIVITIES)
 
         if language is None:
-            language = PLOT_FUSED_LANG if self.fused else PLOT_LANG
+            language = PLOT_FUSED if self.fused else PLOT
 
         return self._get_plot(activities, language)
 

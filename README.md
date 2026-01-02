@@ -1,90 +1,79 @@
-<h1 align="center">
-  <a href="https://github.com/actimotus/actimotus">
-    <img src="https://github.com/actimotus/actimotus/blob/main/docs/actimotus.png?raw=true" alt="Acti-Motus Logo" height="128px">
-  </a>
-</h1>
+[![PyPi](https://img.shields.io/pypi/v/actimotus.svg)](https://pypi.org/project/actimotus/)
+[![Coverage](https://img.shields.io/pypi/pyversions/actimotus.svg)](https://pypi.org/project/actimotus/)
+[![Monthly Downloads](https://pepy.tech/projects/actimotus)](https://static.pepy.tech/badge/actimotus/month)
+[![License](https://img.shields.io/github/license/actimotus/actimotus.svg)](https://github.com/actimotus/actimotus/blob/main/LICENSE)
 
-<div align="center">
-  <a href="https://pypi.org/project/actimotus/">
-    <img src="https://img.shields.io/pypi/v/actimotus" alt="PyPi Latest Release"/>
-  </a>
-  <a href="https://pypi.org/project/actimotus/">
-    <img src="https://img.shields.io/pypi/pyversions/actimotus.svg" alt="Python Versions"/>
-  </a>
-  <a href="https://pepy.tech/projects/actimotus">
-    <img src="https://static.pepy.tech/badge/actimotus/month" alt="Monthly Downloads"/>
-  </a>
-  <a href="#">
-    <img src="#" alt="DOI Latest Release"/>
-  </a>
-  <a href="https://github.com/actimotus/actimotus/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/actimotus/actimotus.svg" alt="License"/>
-  </a>
-</div>
+A Python-powered human activity recognition algorithm building upon [Acti4](https://github.com/motus-nfa/Acti4). It processes data from multiple accelerometers with a primary **requirement for a thigh-worn sensor**.
 
-<div align="center">
-  <p>Developed by the Danish <a href="https://nfa.dk/en">National Research Center for Working Environment (NRCWE)</a> in collaboration with <a href="https://www.sens.dk/en/">SENS Innovation ApS</a></p>
-</div>
+- Scientifically validated activity detection.
+- Device-independent, relies on RAW accelerometry.
+- **Minimum Requirement:** Single accelerometer worn on the thigh (front or side).
+- **Detects:** Lying, sitting, standing, walking, stair climbing, and bicycling.
+- **Optional:** A back-worn sensor enhances lying/sitting detection; a calf-worn sensor adds squatting/kneeling detection.
 
-
-# Acti-Motus
-
-Python-powered activity detection algorithms that build upon [Acti4](https://github.com/motus-nfa/Acti4), processing data from multiple accelerometers with a **requirement for a thigh-worn sensor**.
-
-- Scientifically validated activity detection
-- Device-independent, relies on RAW accelerometry
-- Requires only a single accelerometer sensor worn on the thigh (front or side)
-- Detects activities: lying, sitting, standing, walking, stair climbing, and bicycling
-- An optional back-worn sensor enhances lying and sitting detection
-- A calf-worn sensor detects squatting and kneeling
-- Python
-
-See [documentation](#) for more details.
+## About predecessor Acti4
+Developed by the Danish [National Research Center for Working Environment (NRCWE)](https://nfa.dk/en), **Acti4** was a MATLAB-based tool designed to classify physical activities (lying, sitting, standing, walking) and assess posture using sensors on the thigh, hip, arm, and trunk. It allowed for combining detections with participant diaries to analyze movement behavior during work and leisure. Development of Acti4 concluded in July 2020. Focus has since shifted to its Python-based successor, **ActiMotus**, which is being developed in partnership with [SENS Innovation ApS](https://www.sens.dk/en/) and is the core of **Motus** infrastructure.
 
 ## Installation
-
 Install using `pip install actimotus`.
 
-## A Simple Example
+## Usage example
+To see ActiMotus in action, here is a simple workflow processing data from a single thigh-worn accelerometer.
+
+### 1. Load the raw accelerometer data
+
 ```python
 import pandas as pd
-from acti_motus import Features, Activities, Exposures
+from actimotus import Sens
 
-df = pd.read_parquet(thigh.parquet)
-print(df)
-#>                                      acc_x        acc_y        acc_z
-#> datetime  
-#> 2024-09-02 08:08:50.227000+00:00  0.218750    -0.171875    -0.773438
-#> 2024-09-02 08:08:50.307000+00:00  0.257812    -0.203125    -0.937500
-#> 2024-09-02 08:08:50.387000+00:00  0.242188    -0.226562    -0.953125
+# Load binary data
+raw = Sens.from_bin(raw_thigh.bin)
+print(raw)
 
-features = Features().compute(df)
-acivities, references = Activities().compute(features)
-print(activities)
-#>                           activity  steps
-#> datetime  
-#> 2024-09-02 08:08:51+00:00      sit    0.0
-#> 2024-09-02 08:08:52+00:00      sit    0.0
-#> 2024-09-02 08:08:53+00:00      sit    0.0
-
-exposures = Exposures().compute(df)
-print(exposures)
-#>                                    sedentary           standing            on_feet
-#> datetime  
-#> 2024-09-02 00:00:00+00:00    0 days 09:12:21    0 days 04:34:03    0 days 01:26:00
-#> 2024-09-03 00:00:00+00:00    0 days 17:05:21    0 days 04:11:19    0 days 01:30:02
-#> 2024-09-04 00:00:00+00:00    0 days 18:26:01    0 days 04:05:18    0 days 00:46:19
-#> 2024-09-05 00:00:00+00:00    0 days 04:47:29    0 days 00:59:53    0 days 00:08:28
+datetime                           acc_x       acc_y       acc_z  
+2024-09-02 08:08:50.227000+00:00   0.218750   -0.171875   -0.773438
+2024-09-02 08:08:50.307000+00:00   0.257812   -0.203125   -0.937500
+2024-09-02 08:08:50.387000+00:00   0.242188   -0.226562   -0.953125
+2024-09-02 08:08:50.467000+00:00   0.234375   -0.242188   -0.945312
+2024-09-02 08:08:50.548000+00:00   0.257812   -0.226562   -0.953125
 ```
 
-Detailed information on Acti-Motus processing and features is available [here](#).
+### 2. Extract features and detect activity types
+Next step is to extract features and detect activity types:
 
-## About Acti4
+```python
+from actimotus import Features, Activities
 
-Developed by the Danish National Research Center for Working Environment, Acti4 was a sophisticated Matlab program designed to process data from multiple accelerometer sensors that participants wore on their thigh, hip, arm, and trunk. The core function of Acti4 was to classify physical activities, such as lying, sitting, standing, or walking. It also offered further calculations to assess a participant's posture by determining arm and trunk inclination. Lastly, these detections could be combined with participant diaries to obtain more contextual information, such as movement behaviour during periods of work and leisure.
+# Calculate features from the raw data
+features = Features(calibrate=False).compute(df)
 
-The development of Acti4 concluded in July 2020 with its final release. Subsequently, the focus was redirected toward a successor project: rewriting the original Acti4 algorithm in Python. This new initiative, known as Motus, is being developed in partnership with SENS Innovation ApS.
+# Classify activities
+acivities, references = Activities(vendor="Sens").compute(features)
+print(activities)
 
-## Contributing
+datetime                    activity  
+2024-09-02 08:08:51+00:00   sit
+2024-09-02 08:08:52+00:00   sit
+2024-09-02 08:08:53+00:00   sit
+2024-09-02 08:08:54+00:00   sit
+2024-09-02 08:08:55+00:00   sit
+```
 
-For guidance on setting up a development environment and how to make a contribution to Acti-Motus, see [Contributing to Acti-Motus](#).
+### 3. Generate aggregated exposures
+To summarize the detected activities over time (e.g., daily totals), transform the data into exposures:
+
+```python
+from actimotus import Exposures
+
+# Compute daily exposures from the activity data
+exposures = Exposures().compute(df)
+print(exposures)
+
+datetime                    sit               stand             walk              bicycle
+2024-09-02 00:00:00+00:00   0 days 04:13:20   0 days 02:29:48   0 days 01:43:48   0 days 00:00:00
+2024-09-03 00:00:00+00:00   0 days 07:20:48   0 days 02:23:44   0 days 01:42:22   0 days 00:17:35
+2024-09-04 00:00:00+00:00   0 days 08:16:13   0 days 02:24:17   0 days 00:54:27   0 days 00:37:01
+2024-09-05 00:00:00+00:00   0 days 00:44:01   0 days 00:38:16   0 days 00:10:19   0 days 00:17:27
+```
+
+Detailed information on ActiMotus processing and features is available in the [learning center](https://actimotus.josefheidler.cz/learn).

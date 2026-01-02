@@ -152,6 +152,63 @@ FUSED_ACTIVITIES = {
     'stairs': 'walk',
 }
 
+PLOT = {
+    'activities': {
+        'non-wear': {'text': 'Non-wear', 'color': '#BDBDBD'},
+        'lie': {'text': 'Lying', 'color': '#42A5F5'},
+        'sit': {'text': 'Sitting', 'color': '#1565C0'},
+        'stand': {'text': 'Standing', 'color': '#26A69A'},
+        'shuffle': {'text': 'Shuffling', 'color': '#00695C'},
+        'walk': {'text': 'Walking', 'color': '#66BB6A'},
+        'fast-walk': {'text': 'Fast walking', 'color': '#2E7D32'},
+        'run': {'text': 'Running', 'color': '#FF7043'},
+        'stairs': {'text': 'Stairs', 'color': '#D84315'},
+        'bicycle': {'text': 'Bicycling', 'color': '#E53935'},
+        'row': {'text': 'Rowing', 'color': '#EC407A'},
+        'kneel': {'text': 'Kneeling', 'color': '#26C6DA'},
+        'squat': {'text': 'Squatting', 'color': '#00838F'},
+    },
+    'title': '24/7 Movement Behaviour',
+    'x': 'Time',
+    'y': 'Day',
+    'legend': 'Activity',
+    'weekdays': {
+        'Monday': 'Monday',
+        'Tuesday': 'Tuesday',
+        'Wednesday': 'Wednesday',
+        'Thursday': 'Thursday',
+        'Friday': 'Friday',
+        'Saturday': 'Saturday',
+        'Sunday': 'Sunday',
+    },
+}
+
+
+PLOT_FUSED = {
+    'activities': {
+        'non-wear': {'text': 'Non-wear', 'color': '#BDBDBD'},
+        'sedentary': {'text': 'Sedentary', 'color': '#42A5F5'},
+        'stand': {'text': 'Standing', 'color': '#26A69A'},
+        'walk': {'text': 'Walking', 'color': '#66BB6A'},
+        'run': {'text': 'Running', 'color': '#FF7043'},
+        'bicycle': {'text': 'Bicycling', 'color': '#EF5350'},
+        'row': {'text': 'Rowing', 'color': '#AB47BC'},
+    },
+    'title': '24/7 Movement Behaviour',
+    'x': 'Time',
+    'y': 'Day',
+    'legend': 'Activity',
+    'weekdays': {
+        'Monday': 'Monday',
+        'Tuesday': 'Tuesday',
+        'Wednesday': 'Wednesday',
+        'Thursday': 'Thursday',
+        'Friday': 'Friday',
+        'Saturday': 'Saturday',
+        'Sunday': 'Sunday',
+    },
+}
+
 FEATURES = [
     'x',
     'y',

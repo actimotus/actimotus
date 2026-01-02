@@ -6,7 +6,7 @@ repo_url: https://github.com/actimotus/actimotus
 repo_name: actimotus/actimotus
 
 watch:
-  [mkdocs.yml, src, docs, CHANGELOG.md, LICENSE, CONTRIBUTING.md]
+  [README.md, mkdocs.yml, src, docs, CHANGELOG.md, LICENSE, CONTRIBUTING.md]
 
 theme:
   name: material
@@ -27,7 +27,7 @@ theme:
     - search.highlight
     - content.code.copy
     - content.code.annotate
-  palette: 
+  palette:
     # Palette toggle for automatic mode
     - media: "(prefers-color-scheme)"
       toggle:
@@ -57,8 +57,13 @@ nav:
     - Welcome to ActiMotus: index.md
     - Contributing: contributing.md
     - Changelog: changelog.md
-  - Reference: reference.md
-  - Example: example.md
+  - Learn:
+    - Processing: learn/processing.md
+  - References:
+    - Features: references/features.md
+    - Activities: references/activities.md
+    - Exposures: references/exposures.md
+    - Parsers: references/parsers.md
 
 not_in_nav: |
   abbreviations.md
@@ -71,6 +76,9 @@ extra:
     - icon: fontawesome/solid/globe
       link: https://actimotus.josefheidler.cz
       name: ActiMotus Python Package
+
+extra_javascript:
+  - javascripts/notebook-layout.js
 
 copyright: Copyright &copy; 2026 Danish National Research Center for Working Environment
 
@@ -100,6 +108,9 @@ plugins:
             show_docstring_raises: false
             filters:
               - "!^_"
+  - mkdocs-jupyter:
+      include: ["*.ipynb"]
+
 
 markdown_extensions:
   - abbr
@@ -117,11 +128,10 @@ markdown_extensions:
   - pymdownx.tilde
   - pymdownx.details
   - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji 
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       pygments_lang_class: true
-      auto_title: true
   - pymdownx.superfences
   - pymdownx.inlinehilite
   - pymdownx.smartsymbols

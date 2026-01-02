@@ -23,23 +23,37 @@ class Features:
 
     This class provides a pipeline for transforming raw accelerometer time-series
     data into a set of features. The process includes input validation,
-    sampling frequency detection, resampling to a consistent frequency, optional
-    auto-calibration, and the computation of various features like High-Low (HL)
-    ratio, step-related metrics, and downsampled statistical summaries.
+    sampling frequency detection, resampling, optional auto-calibration, and
+    the computation of metrics (e.g., High-Low ratio, step-related metrics).
 
     The class can process data in a single batch or in overlapping chunks to
-    mimic Sen's infrastructure processing.
+    mimic Sens's infrastructure.
 
     Attributes:
-        system_frequency (int): The target frequency (in Hz) to which the data
-            is resampled. Defaults to 30 Hz and should not be changed as all pipelines are
-            designed to work with this frequency.
-        validation (bool): Performs validation on the input DataFrame's
-            format.
-        calibrate (bool): Applies auto-calibration to the raw data.
-        chunking (bool): Processes the data in chunks.
-        size (timedelta): The size of each data chunk when chunking is enabled.
-        overlap (timedelta): The overlap between consecutive chunks.
+        system_frequency: The target frequency (in Hz) to which data is resampled.
+            **Warning:** Defaults to 30 Hz. Changing this is not recommended as
+            downstream pipelines depend on this frequency.
+        validation: If `True`, performs schema and format validation on the input.
+        calibrate: If `True`, applies gravitational auto-calibration to the raw data.
+        chunking: If `True`, processes the data in overlapping chunks.
+        size: The duration of each data chunk. Only used if `chunking` is `True`.
+        overlap: The duration of overlap between consecutive chunks. Only used
+            if `chunking` is `True`.
+
+    Examples:
+        Basic usage with default settings:
+
+        >>> from datetime import timedelta
+        >>> extractor = Features()
+        >>> # features = extractor.compute(df)
+
+        Configuration for chunked processing:
+
+        >>> extractor = Features(
+        ...     chunking=True,
+        ...     size=timedelta(days=1),
+        ...     overlap=timedelta(minutes=15)
+        ... )
     """
 
     system_frequency: int = 30
@@ -408,24 +422,31 @@ class Features:
         return dfs
 
     def compute(self, df: pd.DataFrame, sampling_frequency: float | None = None) -> pd.DataFrame:
-        """Computes features from accelerometer data DataFrame.
-        This method serves as the main entry point for feature computation. It handles
-        pre-processing steps like data format validation, sampling frequency
-        determination, and optional calibration before dispatching the computation
-        to either a chunked or a non-chunked processing function based on the
-        instance's configuration.
+        """Computes extracted features from raw accelerometer data.
+
+        This method orchestrates the pipeline: it handles format validation,
+        frequency inference, resampling, and optional calibration. It then
+        dispatches the computation to either a chunked or batch processing
+        backend based on the instance configuration.
 
         Args:
-            df (pd.DataFrame): The input DataFrame containing accelerometer data.
-                It is expected to have a time-based index from which the sampling
-                frequency can be inferred if not provided.
-
-            sampling_frequency (float | None, optional): The sampling frequency of
-                the data in Hertz. If None, it will be automatically calculated
-                from the DataFrame's index.
+            df: The input DataFrame containing accelerometer data. Must possess
+                a `DatetimeIndex` and contain only accelerometer columns (axes X, Y, Z).
+            sampling_frequency: The sampling frequency of the data in Hertz.
+                If `None`, it is inferred automatically from the index of `df`.
 
         Returns:
-            pd.DataFrame: A new DataFrame containing the computed features.
+            A DataFrame containing the computed features.
+
+        Examples:
+            Basic usage where frequency is inferred:
+
+            >>> extractor = Features()
+            >>> features = extractor.compute(df)
+
+            Explicitly providing frequency:
+
+            >>> features = extractor.compute(df, sampling_frequency=12.5)
         """
 
         df = self.check_format(df)

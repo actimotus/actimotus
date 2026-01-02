@@ -22,9 +22,53 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Activities:
+    """Processes extracted features to perform Human Activity Recognition (HAR).
+
+    This class ingests features from multiple sensors (required: thigh; optional:
+    trunk, calf, arm) and produces a time-series of recognized activities
+    at 1-second resolution.
+
+    Key capabilities include automatic sensor orientation detection (correcting
+    for upside-down or inside-out flipped devices), vendor-specific signal corrections,
+    and configurable activity recognition thresholds.
+
+    Attributes:
+        system_frequency: The target frequency (in Hz) used for internal
+            calculations. Defaults to 30 Hz.
+        vendor: The hardware vendor of the sensor. If set to `'Sens'`, specific
+            signal corrections are applied. Use `'Other'` for generic devices.
+        orientation: If `True`, automatically detects and corrects the sensor
+            orientation (e.g., if the device was worn upside down).
+        chunks: If `True`, processes data in overlapping chunks to simulate
+            cloud/streaming infrastructure.
+        size: The duration of each processing chunk. Accepts a `timedelta`
+            object or a pandas-style string alias (e.g., `'1d'`, `'1h'`).
+        overlap: The duration of overlap between consecutive chunks. Accepts a
+            `timedelta` object or a string alias (e.g., `'15min'`).
+        config: The configuration for activity recognition thresholds.
+            Can be a dictionary of custom parameters, or a preset string:
+
+            * `'DEFAULT'`: Standard thresholds for general population.
+            * `'LEGACY'`: Older threshold values for backward compatibility.
+
+    Examples:
+        Standard usage with default configuration:
+
+        >>> model = Activities()
+        >>> # activities, references = model.process(features)
+
+        Usage for 'Sens' devices with legacy thresholds and automatic flip detection:
+
+        >>> model = Activities(
+        ...     vendor='Sens',
+        ...     config='LEGACY',
+        ...     orientation=True
+        ... )
+    """
+
     system_frequency: int = 30
     vendor: Literal['Sens', 'Other'] = 'Other'
-    orientation: bool = True
+    orientation: bool = False
     chunks: bool = False
     size: str | timedelta = '1d'
     overlap: str | timedelta = '15min'
@@ -155,6 +199,56 @@ class Activities:
         arm: pd.DataFrame | None = None,
         references: dict[str, Any] | None = None,
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
+        """Executes the activity recognition pipeline on the provided sensor data.
+
+        This method synchronizes inputs from the thigh (primary) and optional
+        secondary sensors.
+
+        Args:
+            thigh: The primary accelerometer feature data. Must contain a
+                `DatetimeIndex`. This sensor is mandatory for the pipeline.
+            trunk: Optional feature data from a trunk sensor.
+            calf: Optional feature data from a calf sensor.
+            arm: Optional feature data from an arm sensor.
+            references: A dictionary containing reference data (individual reference angles, calibration intervals).
+
+        Returns:
+            A tuple `(activities, updated_references)` containing:
+
+            1.  **activities** (`pd.DataFrame`): The recognized activities,
+                resampled to 1-second epochs.
+            2.  **updated_references** (`dict`): The updated state dictionary,
+                containing new reference angles calculated during
+                processing.
+
+        Examples:
+            Basic usage with only the mandatory thigh sensor:
+
+            >>> model = Activities()
+            >>> activities, references = model.compute(features)
+
+            Usage with multiple sensors and existing references. Note that
+            secondary sensors must be passed as keyword arguments:
+
+            >>> previous_references = {
+            ...     'thigh': {
+            ...         'value': -0.201,
+            ...         'expires': '2024-09-03 12:05:51+00:00',
+            ...     },
+            ...     'calibrations': [
+            ...         {
+            ...             'start': '2024-09-03 08:08:51+00:00',
+            ...             'end': '2024-09-03 08:09:11+00:00',
+            ...             'ttl': '24h',
+            ...         },
+            ...     ],
+            ... }
+            >>> activities, new_references = model.compute(
+            ...     thigh_df,
+            ...     trunk=trunk_df,
+            ...     references=previous_references,
+            ... )
+        """
         references_obj = References.from_dict(references)
         references_obj.remove_outdated(thigh.index[0])
 

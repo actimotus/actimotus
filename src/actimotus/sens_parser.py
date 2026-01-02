@@ -55,6 +55,18 @@ DTYPE = np.dtype([('timestamp', '6uint8'), ('x', '>i2'), ('y', '>i2'), ('z', '>i
 
 @dataclass
 class Sens(FileParser):
+    """Parses SENS accelerometer data from binary files.
+
+    This class handles the extraction of raw accelerometer data from SENS `.bin`
+    files. It reads the binary structure, validates the file format, and optionally
+    normalizes the raw integer values to gravitational units (g).
+
+    Attributes:
+        normalize: If `True`, raw values are multiplied by the normalization
+            factor (`-4/512`) to convert them to g-force. If `False`, returns
+            the raw integer counts from the sensor ADC. Defaults to `True`.
+    """
+
     normalize: bool = True
 
     def _read(
@@ -84,6 +96,27 @@ class Sens(FileParser):
         return df.astype(np.float32)
 
     def from_bin(self, path: str | Path) -> pd.DataFrame:
+        """Reads and decodes a Sens binary file into a DataFrame.
+
+        This method validates the file extension and existence before parsing.
+        It handles path conversion automatically.
+
+        Args:
+            path: The file path to the source `.bin` file. Accepts either a string
+                path or a `Path` object.
+
+        Returns:
+            A DataFrame containing the parsed accelerometer data. If `normalize`
+            is `True`, the data is in *g*; otherwise, it is in raw units.
+
+        Raises:
+            ValueError: If the file at `path` does not have the `.bin` extension.
+            FileNotFoundError: If the file does not exist.
+
+        Examples:
+            >>> parser = Sens(normalize=True)
+            >>> df = parser.from_bin("data/sensor_01.bin")
+        """
         if isinstance(path, str):
             path = Path(path)
 
