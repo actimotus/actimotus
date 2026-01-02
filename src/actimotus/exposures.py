@@ -97,17 +97,17 @@ class Exposures:
     def _get_exposures(self, df: pd.DataFrame) -> pd.Series:
         exposure = {
             'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
-            'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie']), 'time'),
+            'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'stand']), 'time'),
             'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
             'on_feet': self._get_exposure(
                 df,
-                df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs']),
+                df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs', 'squat']),
                 'time',
             ),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'kneel']), 'count'),
             'lpa': self._get_exposure(
                 df,
-                df['activity'].isin(['stand', 'shuffle', 'walk', 'squat']),
+                df['activity'].isin(['shuffle', 'walk', 'squat']),
                 'time',
             ),
             'mvpa': self._get_exposure(
