@@ -1,6 +1,6 @@
 [![PyPi](https://img.shields.io/pypi/v/acti-motus.svg)](https://pypi.org/project/acti-motus/)
 [![Coverage](https://img.shields.io/pypi/pyversions/acti-motus.svg)](https://pypi.org/project/acti-motus/)
-[![Monthly Downloads](https://pepy.tech/projects/acti-motus)](https://static.pepy.tech/badge/acti-motus/month)
+[![Monthly Downloads](https://static.pepy.tech/badge/acti-motus/month)](https://pepy.tech/projects/acti-motus)
 [![License](https://img.shields.io/github/license/acti-motus/actimotus.svg)](https://github.com/actimotus/actimotus/blob/main/LICENSE)
 
 A Python-powered human activity recognition algorithm building upon [Acti4](https://github.com/motus-nfa/Acti4). It processes data from multiple accelerometers with a primary **requirement for a thigh-worn sensor**.
