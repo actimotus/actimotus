@@ -15,7 +15,7 @@ A Python-powered human activity recognition algorithm building upon [Acti4](http
 Developed by the Danish [National Research Center for Working Environment (NRCWE)](https://nfa.dk/en), **Acti4** was a MATLAB-based tool designed to classify physical activities (lying, sitting, standing, walking) and assess posture using sensors on the thigh, hip, arm, and trunk. It allowed for combining detections with participant diaries to analyze movement behavior during work and leisure. Development of Acti4 concluded in July 2020. Focus has since shifted to its Python-based successor, **ActiMotus**, which is being developed in partnership with [SENS Innovation ApS](https://www.sens.dk/en/) and is the core of **Motus** infrastructure.
 
 ## Installation
-Install using `pip install actimotus`.
+Install using `pip install acti-motus`.
 
 ## Usage example
 To see ActiMotus in action, here is a simple workflow processing data from a single thigh-worn accelerometer.
