@@ -1,3 +1,4 @@
+# ActiMotus
 [![PyPi](https://img.shields.io/pypi/v/acti-motus.svg)](https://pypi.org/project/acti-motus/)
 [![Coverage](https://img.shields.io/pypi/pyversions/acti-motus.svg)](https://pypi.org/project/acti-motus/)
 [![Monthly Downloads](https://static.pepy.tech/badge/acti-motus/month)](https://pepy.tech/projects/acti-motus)
