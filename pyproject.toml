@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "actimotus"
+name = "acti-motus"
 version = "2.3.0"
 description = "Python-powered human activity recognition algorithm that build upon Acti4, processing data from multiple accelerometers with a required thigh sensor."
 readme = "README.md"
