@@ -14,7 +14,7 @@ authors = [
 ]
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
-keywords = ["accelerometers", "activity-classification", "movement-behavior"]
+keywords = ["accelerometers", "human-activity-recognition", "movement-behavior"]
 classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -36,8 +36,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = 'https://github.com/actimotus/actimotus'
-Documentation = 'https://github.com/actimotus/actimotus'
+Homepage = 'https://actimotus.josefheidler.cz'
+Documentation = 'https://actimotus.josefheidler.cz'
 Source = 'https://github.com/actimotus/actimotus'
 Changelog = 'https://github.com/actimotus/actimotus/blob/main/CHANGELOG.md'
 
@@ -62,10 +62,8 @@ docs = [
 
 [tool.hatch.build.targets.sdist]
 # limit which files are included in the sdist (.tar.gz) asset,
-# see https://github.com/pydantic/pydantic/pull/4542
 include = [
     '/README.md',
-    '/Makefile',
     '/src',
 ]
 

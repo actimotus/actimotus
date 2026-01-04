@@ -77,9 +77,6 @@ extra:
       link: https://actimotus.josefheidler.cz
       name: ActiMotus Python Package
 
-extra_javascript:
-  - javascripts/notebook-layout.js
-
 copyright: Copyright &copy; 2026 Danish National Research Center for Working Environment
 
 plugins:

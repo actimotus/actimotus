@@ -25,9 +25,16 @@ class Trunk(Sensor):
         walk = df[(~df['non-wear']) & (df['activity'].isin(['walk', 'fast-walk']))]
 
         if not walk.empty:
-            y = np.median(walk['direction']) - 6
-            z = np.median(walk['side_tilt'])
-            x = np.degrees(np.arccos(np.radians(y)) * np.cos(np.radians(z)))
+            y = np.radians(np.median(walk['direction']) - 6)
+
+            if abs(y) > 1:
+                y = np.clip(y, -1, 1)  # Ensure valid input for arccos
+                logger.warning(
+                    f'Unusual median direction angle detected during walking: {y:.2f} degrees. Angle clipped to valid range.'
+                )
+
+            z = np.radians(np.median(walk['side_tilt']))
+            x = np.degrees(np.arccos(y) * np.cos(z))
 
             reference_angle = np.array([x, y, z])
             angle_status = Calculation.AUTOMATIC

@@ -88,6 +88,7 @@ class Exposures:
         lower: int,
         upper: int,
     ) -> pd.Series:
+        # FIXME: Most probably this should include all activities expect lying?
         valid = df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk']) & (
             df['arm_inclination'].between(lower, upper, inclusive='both')
         )
@@ -95,16 +96,18 @@ class Exposures:
         return valid
 
     def _get_exposures(self, df: pd.DataFrame) -> pd.Series:
+        sedentary = ['sit', 'lie', 'kneel']
+
         exposure = {
             'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
-            'sedentary': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'stand']), 'time'),
+            'sedentary': self._get_exposure(df, df['activity'].isin(sedentary), 'time'),
             'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
             'on_feet': self._get_exposure(
                 df,
                 df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs', 'squat']),
                 'time',
             ),
-            'sedentary_to_other': self._get_exposure(df, df['activity'].isin(['sit', 'lie', 'kneel']), 'count'),
+            'sedentary_to_other': self._get_exposure(df, df['activity'].isin(sedentary), 'count'),
             'lpa': self._get_exposure(
                 df,
                 df['activity'].isin(['shuffle', 'walk', 'squat']),
@@ -218,8 +221,8 @@ class Exposures:
             .reset_index(drop=True)
         )
 
-        df['start_time'] = df['start_time'].dt.tz_localize(None)
-        df['end_time'] = df['end_time'].dt.tz_localize(None)
+        df['start_time'] = df['start_time'].dt.tz_localize(None)  # type: ignore
+        df['end_time'] = df['end_time'].dt.tz_localize(None)  # type: ignore
 
         df['duration'] = df['end_time'] - df['start_time']
         df['duration'] = df['duration'].dt.total_seconds() / 60.0  # duration in minutes # type: ignore
