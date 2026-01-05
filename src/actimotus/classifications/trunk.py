@@ -28,10 +28,10 @@ class Trunk(Sensor):
             y = np.radians(np.median(walk['direction']) - 6)
 
             if abs(y) > 1:
-                y = np.clip(y, -1, 1)  # Ensure valid input for arccos
                 logger.warning(
                     f'Unusual median direction angle detected during walking: {y:.2f} degrees. Angle clipped to valid range.'
                 )
+                y = np.clip(y, -1, 1)  # Ensure valid input for arccos
 
             z = np.radians(np.median(walk['side_tilt']))
             x = np.degrees(np.arccos(y) * np.cos(z))

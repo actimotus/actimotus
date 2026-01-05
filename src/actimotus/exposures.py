@@ -220,12 +220,14 @@ class Exposures:
             )
             .reset_index(drop=True)
         )
+        df['end_time'] += timedelta(seconds=1)  # make end_time exclusive
 
         df['start_time'] = df['start_time'].dt.tz_localize(None)  # type: ignore
         df['end_time'] = df['end_time'].dt.tz_localize(None)  # type: ignore
 
         df['duration'] = df['end_time'] - df['start_time']
         df['duration'] = df['duration'].dt.total_seconds() / 60.0  # duration in minutes # type: ignore
+        df['end_time'] = df['end_time'] - timedelta(seconds=1)  # make end_time inclusive for plotting
         df['activity'] = df['activity'].astype(str).replace(labels)
         df['y_label'] = (
             df['start_time'].dt.strftime('%d-%m-%Y') + ' (' + df['start_time'].dt.day_name().map(lang['weekdays']) + ')'  # type: ignore
