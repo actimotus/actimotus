@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-02-03
+
+### Changed
+- Trunk reference angle calculation: Updated the calculation logic to prevent errors when values fall outside the valid arccos domain. Inputs are now strictly clipped to the [-1, 1] range (radians) to ensure numerical stability.
+- Refined activity mapping: Updated the fused activities mapping logic. `Standing`: No longer categorized as sedentary or LPA; it is now tracked as a standalone category. `Kneeling`: Now mapped as sedentary.
+
+### Fixed
+- Exposures plot: Improved handling of timeline data to ensure consistent rendering and scaling.
+- Project maintenance: Cleaned and optimized `pyproject.toml` and `.gitignore`.
+
 ## [2.3.0] - 2026-01-03
 
 ### Added
