@@ -323,18 +323,31 @@ class Exposures:
         return df
 
     @staticmethod
-    def context(
-        df: pd.DataFrame,
-        intervals: pd.DataFrame,
-        context: str,
-        activities: list[str] | None = None,
-    ) -> pd.Series:
-        df = df[['activity']].copy()
-        df[context] = False
+    def _validate_diary(diary: pd.DataFrame) -> None:
+        """Validate a diary of context intervals.
 
-        for start, end in intervals.itertuples(index=False):
-            logic = (df.index >= start) & (df.index < end)
-            logic = logic & (df['activity'].isin(activities) if activities is not None else logic)
-            df.loc[logic, context] = True
+        The diary must have columns ``start``, ``end``, ``context`` (and an
+        optional ``activities`` column). ``start``/``end`` must be timezone-aware
+        datetimes and every ``end`` must be strictly after its ``start``.
 
-        return df[context]
+        Args:
+            diary: DataFrame with columns ``start``, ``end``, ``context`` and an
+                optional per-row ``activities`` list.
+
+        Raises:
+            ValueError: If required columns are missing, any interval has
+                ``end <= start``, or ``start``/``end`` are not timezone-aware.
+        """
+        required = {'start', 'end', 'context'}
+        missing = required - set(diary.columns)
+        if missing:
+            raise ValueError(f'Diary missing required columns: {sorted(missing)}')
+
+        for column in ('start', 'end'):
+            if not isinstance(diary[column].dtype, pd.DatetimeTZDtype):
+                raise ValueError(
+                    f"Diary column '{column}' must be timezone-aware datetimes."
+                )
+
+        if (diary['end'] <= diary['start']).any():
+            raise ValueError("Diary has rows where 'end' is not after 'start'.")
