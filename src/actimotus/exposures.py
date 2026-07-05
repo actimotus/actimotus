@@ -384,3 +384,42 @@ class Exposures:
             mask = mask | in_interval
 
         return mask
+
+    @staticmethod
+    def context(df: pd.DataFrame, diary: pd.DataFrame) -> pd.DataFrame:
+        """Annotate the activity DataFrame with diary contexts.
+
+        For each distinct ``context`` in the diary, adds a boolean
+        ``context__<name>`` column that is ``True`` for epochs inside any of that
+        context's intervals (optionally gated by each interval's ``activities``).
+        Contexts may overlap; multiple intervals for one context union into a
+        single column. The input frame is not mutated — a copy is returned.
+
+        Args:
+            df: Activity DataFrame, timezone-aware DatetimeIndex, ``activity`` column.
+            diary: Clean diary with columns ``start``, ``end``, ``context`` and an
+                optional per-row ``activities`` list, timezone-aware and in the same
+                timezone as ``df``'s index.
+
+        Returns:
+            A copy of ``df`` with one ``context__<name>`` boolean column per context.
+
+        Raises:
+            ValueError: If the diary is invalid (see :meth:`_validate_diary`), the
+                index is not timezone-aware, or the diary and index timezones differ.
+        """
+        Exposures._validate_diary(diary)
+
+        if df.index.tz is None:
+            raise ValueError('Activity DataFrame index must be timezone-aware.')
+        if str(diary['start'].dt.tz) != str(df.index.tz):
+            raise ValueError(
+                f"Diary timezone ({diary['start'].dt.tz}) does not match activity "
+                f'index timezone ({df.index.tz}).'
+            )
+
+        df = df.copy()
+        for context, intervals in diary.groupby('context', sort=False):
+            df[f'context__{context}'] = Exposures._context_mask(df, intervals)
+
+        return df
