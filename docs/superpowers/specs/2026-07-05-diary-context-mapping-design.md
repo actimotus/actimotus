@@ -88,10 +88,11 @@ The `context__` prefix prevents collisions and makes the columns selectable via
 
 ## Components
 
-### `validate_diary(diary) -> None` (raises on invalid)
+### `Exposures._validate_diary(diary) -> None` (private, raises on invalid)
 
-Standalone, testable, and invoked automatically at the top of `context()`.
-Checks (raises `ValueError` on failure):
+Private helper, invoked automatically at the top of `context()`. Not part of the
+public API or docs (tests call it directly by convention). Checks (raises
+`ValueError` on failure):
 
 1. Required columns present: `start`, `end`, `context`. `activities` optional; if
    absent, treated as all-`None`.
@@ -109,7 +110,7 @@ Replaces the current single-context `Exposures.context` (breaking change to a
 documented method — acceptable).
 
 1. Copy `df` (never mutate the caller's frame).
-2. `validate_diary(diary)` (structure + tz-aware), then assert diary zone ==
+2. `_validate_diary(diary)` (structure + tz-aware), then assert diary zone ==
    `df.index` zone, else raise.
 3. Group `diary` by `context`.
 4. For each context, call `_context_mask` over that context's rows and assign the
@@ -159,7 +160,7 @@ Activities.compute(...) --> activity df (1s epochs, datetime index) ------+
 
 ## Testing
 
-- `validate_diary`: missing columns; `start >= end`; naive timestamps raise.
+- `_validate_diary`: missing columns; `start >= end`; naive timestamps raise.
 - `context` tz: same-zone proceeds; different zone raises; diary-vs-index zone
   mismatch raises.
 - `_context_mask`: single interval; **multiple intervals same context union into
