@@ -23,8 +23,9 @@ DataFrame to produce boolean context columns.
 
 **Out of scope:** parsing the messy app-export CSV (`temp/export_diary_*.csv`
 with `entry_type`/`HH:MM`/midnight-crossing). Converting that export into the
-clean diary shape is a **separate upstream adapter** (a script or helper), not
-part of this feature. This keeps the core matching logic clean and vendor-neutral.
+clean diary shape is **the caller's responsibility, done outside the library** —
+not shipped as part of acti-motus at all. The feature always receives an
+already-clean diary. This keeps the core matching logic clean and vendor-neutral.
 
 **Explicitly not included (YAGNI):** relabeling / overriding the `activity`
 column with a context value; a `dimension`/grouping layer over contexts;
@@ -170,5 +171,5 @@ Activities.compute(...) --> activity df (1s epochs, datetime index) ------+
 
 ## Open items for the implementation plan
 
-- Where the upstream `export_diary_*.csv` adapter should live (likely `dev/` or a
-  small documented helper) — tracked separately from this feature.
+None — the design is fully specified. Producing a clean diary from any raw export
+is the caller's job, outside the library.
