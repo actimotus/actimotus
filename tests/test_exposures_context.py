@@ -37,6 +37,63 @@ class TestValidateDiary:
         diary = diary.drop(columns=['activities'])
         assert Exposures._validate_diary(diary) is None
 
+    def test_nat_in_start_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)])
+        diary.loc[0, 'start'] = pd.NaT
+        with pytest.raises(ValueError, match='NaT'):
+            Exposures._validate_diary(diary)
+
+    def test_nat_in_end_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)])
+        diary.loc[0, 'end'] = pd.NaT
+        with pytest.raises(ValueError, match='NaT'):
+            Exposures._validate_diary(diary)
+
+    def test_null_context_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)])
+        diary.loc[0, 'context'] = None
+        with pytest.raises(ValueError, match='context'):
+            Exposures._validate_diary(diary)
+
+    def test_non_string_context_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)])
+        diary.loc[0, 'context'] = 123
+        with pytest.raises(ValueError, match='context'):
+            Exposures._validate_diary(diary)
+
+    def test_empty_context_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', '   ', None)])
+        with pytest.raises(ValueError, match='context'):
+            Exposures._validate_diary(diary)
+
+    def test_activities_pd_na_passes(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', pd.NA)])
+        assert Exposures._validate_diary(diary) is None
+
+    def test_activities_bare_string_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', 'sit')])
+        with pytest.raises(ValueError, match='activities'):
+            Exposures._validate_diary(diary)
+
+    def test_activities_number_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', 5)])
+        with pytest.raises(ValueError, match='activities'):
+            Exposures._validate_diary(diary)
+
+    def test_activities_non_string_element_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', ['sit', 5])])
+        with pytest.raises(ValueError, match='activities'):
+            Exposures._validate_diary(diary)
+
+    def test_activities_unknown_label_raises(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', ['sleeping'])])
+        with pytest.raises(ValueError, match='unknown'):
+            Exposures._validate_diary(diary)
+
+    def test_activities_valid_labels_passes(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', ['lie', 'sit'])])
+        assert Exposures._validate_diary(diary) is None
+
 
 class TestContextMask:
     def test_interval_only(self, activities, diary_factory):

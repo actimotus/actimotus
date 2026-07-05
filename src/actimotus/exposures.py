@@ -328,15 +328,20 @@ class Exposures:
 
         The diary must have columns ``start``, ``end``, ``context`` (and an
         optional ``activities`` column). ``start``/``end`` must be timezone-aware
-        datetimes and every ``end`` must be strictly after its ``start``.
+        datetimes without ``NaT`` and every ``end`` must be strictly after its
+        ``start``. Each ``context`` must be a non-empty string. Each ``activities``
+        cell must be missing (``None``/``NaN``/``pd.NA``) or a list of known
+        ``ACTIVITIES`` labels.
 
         Args:
             diary: DataFrame with columns ``start``, ``end``, ``context`` and an
                 optional per-row ``activities`` list.
 
         Raises:
-            ValueError: If required columns are missing, any interval has
-                ``end <= start``, or ``start``/``end`` are not timezone-aware.
+            ValueError: If required columns are missing; ``start``/``end`` are not
+                timezone-aware or contain ``NaT``; any interval has ``end <= start``;
+                a ``context`` is null, non-string, or empty; or an ``activities``
+                cell is neither missing nor a list of known ``ACTIVITIES`` labels.
         """
         required = {'start', 'end', 'context'}
         missing = required - set(diary.columns)
@@ -348,9 +353,40 @@ class Exposures:
                 raise ValueError(
                     f"Diary column '{column}' must be timezone-aware datetimes."
                 )
+            if diary[column].isna().any():
+                raise ValueError(f"Diary column '{column}' contains NaT (missing timestamps).")
 
         if (diary['end'] <= diary['start']).any():
             raise ValueError("Diary has rows where 'end' is not after 'start'.")
+
+        for context in diary['context']:
+            if not isinstance(context, str) or not context.strip():
+                raise ValueError(
+                    f'Diary has an invalid context value: {context!r}. '
+                    'Context must be a non-empty string.'
+                )
+
+        if 'activities' in diary.columns:
+            known = set(ACTIVITIES.values())
+            for activities in diary['activities']:
+                if isinstance(activities, list):
+                    for label in activities:
+                        if not isinstance(label, str):
+                            raise ValueError(
+                                f'Diary activities must be strings; got {label!r}.'
+                            )
+                        if label not in known:
+                            raise ValueError(
+                                f'Diary activities contains unknown label {label!r}. '
+                                f'Known labels: {sorted(known)}.'
+                            )
+                elif pd.api.types.is_scalar(activities) and pd.isna(activities):
+                    continue  # missing == no gate
+                else:
+                    raise ValueError(
+                        f'Diary activities must be a list of labels or missing; '
+                        f'got {activities!r}.'
+                    )
 
     @staticmethod
     def _context_mask(df: pd.DataFrame, intervals: pd.DataFrame) -> pd.Series:
