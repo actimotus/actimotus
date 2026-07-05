@@ -414,8 +414,8 @@ class Exposures:
             in_interval = (df.index >= row.start) & (df.index < row.end)
 
             activities = row.activities if has_activities else None
-            if activities is not None and not (
-                isinstance(activities, float) and pd.isna(activities)
+            if not (
+                pd.api.types.is_scalar(activities) and pd.isna(activities)
             ) and len(activities) > 0:
                 in_interval = in_interval & df['activity'].isin(activities).to_numpy()
 
