@@ -46,9 +46,13 @@ Keep the existing diary/df split:
 - **`Exposures.context(df, diary)`** — the checks that relate the diary to the
   `df` (activity column present, timezone match on both `start` and `end`, no
   column collision), added before the annotation loop.
-- **`Exposures._context_mask`** — UNCHANGED. It keeps its defensive
-  `None`/`NaN`/empty-list handling so it stays robust and independently testable;
-  validation is the guard, not a replacement for the helper's own safety.
+- **`Exposures._context_mask`** — its "no gate" detection is generalized from
+  `float`-NaN-only to **any scalar NA** (`pd.api.types.is_scalar(x) and
+  pd.isna(x)`), matching what `_validate_diary` now accepts. Without this, a
+  validation-approved `pd.NA` activities cell would reach `len(pd.NA)` and raise
+  `TypeError`, breaking the ValueError-only contract. Its defensive
+  `None`/`NaN`/`pd.NA`/empty-list handling keeps it robust and independently
+  testable.
 
 Rejected alternatives: passing `df` into `_validate_diary` (muddies the "validate
 the diary alone" boundary, makes it un-callable without a df); a separate
@@ -106,8 +110,10 @@ check (6) runs against these normalized names.
   `_context_mask` behavior and its tests.
 - **Empty diary** (zero rows, correct dtypes) still passes — every per-row check
   is vacuous, and `context()` returns the copy unchanged. Preserve this.
-- **`_context_mask` is not simplified.** Its `isinstance(activities, float) and
-  pd.isna(...)` guard remains so the helper is safe if ever called directly.
+- **`_context_mask` NA handling is generalized** from `isinstance(activities,
+  float) and pd.isna(...)` to `pd.api.types.is_scalar(activities) and
+  pd.isna(activities)`, so `pd.NA` (which validation accepts as "no gate") is
+  handled by the helper too rather than crashing on `len(pd.NA)`.
 - Messages should be specific enough to fix the input (name the column, the row's
   value, or the unknown label).
 
