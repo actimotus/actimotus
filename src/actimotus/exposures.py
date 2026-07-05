@@ -354,7 +354,9 @@ class Exposures:
                     f"Diary column '{column}' must be timezone-aware datetimes."
                 )
             if diary[column].isna().any():
-                raise ValueError(f"Diary column '{column}' contains NaT (missing timestamps).")
+                raise ValueError(
+                    f"Diary column '{column}' contains NaT (missing timestamps)."
+                )
 
         if (diary['end'] <= diary['start']).any():
             raise ValueError("Diary has rows where 'end' is not after 'start'.")
