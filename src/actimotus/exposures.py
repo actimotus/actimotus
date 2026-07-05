@@ -351,3 +351,36 @@ class Exposures:
 
         if (diary['end'] <= diary['start']).any():
             raise ValueError("Diary has rows where 'end' is not after 'start'.")
+
+    @staticmethod
+    def _context_mask(df: pd.DataFrame, intervals: pd.DataFrame) -> pd.Series:
+        """Boolean mask for one context across its (possibly multiple) intervals.
+
+        An epoch is ``True`` when its timestamp falls inside any interval's
+        half-open ``[start, end)`` window and, if that interval row carries a
+        non-empty ``activities`` list, the epoch's ``activity`` is in it. Rows for
+        the same context union together.
+
+        Args:
+            df: Activity DataFrame, timezone-aware DatetimeIndex, ``activity`` column.
+            intervals: The diary rows for a single context (``start``, ``end`` and
+                optional per-row ``activities``).
+
+        Returns:
+            Boolean ``pd.Series`` aligned to ``df.index``.
+        """
+        mask = pd.Series(False, index=df.index)
+        has_activities = 'activities' in intervals.columns
+
+        for row in intervals.itertuples(index=False):
+            in_interval = (df.index >= row.start) & (df.index < row.end)
+
+            activities = row.activities if has_activities else None
+            if activities is not None and not (
+                isinstance(activities, float) and pd.isna(activities)
+            ) and len(activities) > 0:
+                in_interval = in_interval & df['activity'].isin(activities).to_numpy()
+
+            mask = mask | in_interval
+
+        return mask
