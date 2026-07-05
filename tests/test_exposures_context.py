@@ -138,3 +138,10 @@ class TestContext:
         )
         with pytest.raises(ValueError, match='timezone'):
             Exposures.context(activities, diary)
+
+    def test_naive_index_raises(self, activities, diary_factory):
+        naive = activities.copy()
+        naive.index = naive.index.tz_localize(None)
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', None)])
+        with pytest.raises(ValueError, match='timezone-aware'):
+            Exposures.context(naive, diary)
