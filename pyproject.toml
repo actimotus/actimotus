@@ -46,6 +46,7 @@ dev = [
     "ipykernel>=6.29.5",
     "pre-commit>=4.2.0",
     "pyinstrument>=5.0.2",
+    "pytest>=7.0.0",
     "ruff>=0.11.11",
     "kaleido==0.2.1",
     "nbformat>=5.10.4",
