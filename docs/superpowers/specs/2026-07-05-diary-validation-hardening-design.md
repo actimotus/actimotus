@@ -30,7 +30,10 @@ problem into a clear `ValueError`.
 
 **Strict: raise on everything.** Every detected problem is a `ValueError` with a
 specific, actionable message. Consistent with the existing strict timezone rule.
-No warnings, no silent coercion.
+No warnings. The **one** normalization applied is stripping surrounding whitespace
+from `context` names (see `context()` below) — a padded name is a formatting
+nuisance, not an error, and stripping also lets `' work '` and `'work'` collapse
+into a single column instead of splitting.
 
 ## Architecture
 
@@ -86,7 +89,16 @@ Before `df.copy()` and the loop, in addition to the existing index-tz-aware and
    both `start` and `end` zones must equal the index zone. (String comparison of
    tz as today.)
 6. **Column collision** — `df` already contains a column named `context__<name>`
-   for some context in the diary. Prevents silently overwriting caller data.
+   for some (normalized) context in the diary. Prevents silently overwriting
+   caller data.
+
+**Normalization (not a check):** after validation, strip surrounding whitespace
+from the context values before grouping — e.g. `diary = diary.copy();
+diary['context'] = diary['context'].str.strip()`. This is done on the local copy
+only (the caller's frame is never mutated). Because grouping and the
+`context__<name>` column names then use the stripped values, `' work '` yields
+`context__work`, and `' work '` + `'work'` collapse into one column. The collision
+check (6) runs against these normalized names.
 
 ## Behavior notes & edge cases
 
@@ -117,6 +129,9 @@ New tests extend `tests/test_exposures_context.py`.
 - diary whose `end` is in a different tz than the index raises.
 - `df` already containing a `context__work` column raises when the diary has a
   `work` context.
+- **whitespace normalization:** a diary context `' work '` produces a
+  `context__work` column (not `context__ work `); a diary mixing `' work '` and
+  `'work'` yields a single `context__work` column (their intervals unioned).
 - Existing behavior tests (columns added, overlap, union, copy, empty-diary,
   tz-mismatch, naive-index) still pass.
 
