@@ -257,3 +257,8 @@ class TestContext:
         assert work_cols == ['context__work']
         assert list(result['context__work']) == \
             [True, True, False, False, False, False, False, False, True, True]
+
+    def test_does_not_mutate_input_diary(self, activities, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', ' work ', None)])
+        Exposures.context(activities, diary)
+        assert diary.loc[0, 'context'] == ' work '
