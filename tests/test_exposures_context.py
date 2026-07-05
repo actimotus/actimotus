@@ -262,3 +262,9 @@ class TestContext:
         diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', ' work ', None)])
         Exposures.context(activities, diary)
         assert diary.loc[0, 'context'] == ' work '
+
+    def test_pd_na_activities_no_gate(self, activities, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', pd.NA)])
+        result = Exposures.context(activities, diary)
+        assert list(result['context__work']) == \
+            [True, True, True, True, True, False, False, False, False, False]
