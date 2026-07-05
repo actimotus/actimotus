@@ -94,6 +94,10 @@ class TestValidateDiary:
         diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', ['lie', 'sit'])])
         assert Exposures._validate_diary(diary) is None
 
+    def test_activities_empty_list_passes(self, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', [])])
+        assert Exposures._validate_diary(diary) is None
+
 
 class TestContextMask:
     def test_interval_only(self, activities, diary_factory):
