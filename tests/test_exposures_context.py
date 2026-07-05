@@ -145,3 +145,18 @@ class TestContext:
         diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', None)])
         with pytest.raises(ValueError, match='timezone-aware'):
             Exposures.context(naive, diary)
+
+    def test_realistic_multi_context_call(self, activities, diary_factory):
+        # activity fixture: ['walk','walk','sit','sit','lie','lie','stand','walk','sit','lie'] at :00..:09
+        diary = diary_factory([
+            ('2024-09-02 07:00:00', '2024-09-02 07:00:10', 'work-day', None),
+            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'commute', None),
+            ('2024-09-02 07:00:02', '2024-09-02 07:00:04', 'work', None),
+            ('2024-09-02 07:00:04', '2024-09-02 07:00:06', 'sleep', ['lie']),
+        ])
+        result = Exposures.context(activities, diary)
+        assert list(result['context__work-day']) == [True] * 10
+        assert list(result['context__commute']) == [True, True] + [False] * 8
+        assert list(result['context__work']) == [False, False, True, True] + [False] * 6
+        assert list(result['context__sleep']) == \
+            [False, False, False, False, True, True, False, False, False, False]
