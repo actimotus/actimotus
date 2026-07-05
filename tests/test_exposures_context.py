@@ -221,3 +221,39 @@ class TestContext:
         assert list(result['context__work']) == [False, False, True, True] + [False] * 6
         assert list(result['context__sleep']) == \
             [False, False, False, False, True, True, False, False, False, False]
+
+    def test_missing_activity_column_raises(self, activities, diary_factory):
+        df = activities.drop(columns=['activity'])
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', None)])
+        with pytest.raises(ValueError, match='activity'):
+            Exposures.context(df, diary)
+
+    def test_end_timezone_mismatch_raises(self, activities, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', None)])
+        diary['end'] = diary['end'].dt.tz_convert('America/New_York')
+        with pytest.raises(ValueError, match='timezone'):
+            Exposures.context(activities, diary)
+
+    def test_existing_context_column_collision_raises(self, activities, diary_factory):
+        df = activities.copy()
+        df['context__work'] = False
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', None)])
+        with pytest.raises(ValueError, match='context'):
+            Exposures.context(df, diary)
+
+    def test_whitespace_context_normalized(self, activities, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', ' work ', None)])
+        result = Exposures.context(activities, diary)
+        assert 'context__work' in result.columns
+        assert 'context__ work ' not in result.columns
+
+    def test_whitespace_variants_merge_one_column(self, activities, diary_factory):
+        diary = diary_factory([
+            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', ' work ', None),
+            ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'work', None),
+        ])
+        result = Exposures.context(activities, diary)
+        work_cols = [c for c in result.columns if c.startswith('context__work')]
+        assert work_cols == ['context__work']
+        assert list(result['context__work']) == \
+            [True, True, False, False, False, False, False, False, True, True]

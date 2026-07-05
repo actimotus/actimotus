@@ -431,7 +431,9 @@ class Exposures:
         ``context__<name>`` column that is ``True`` for epochs inside any of that
         context's intervals (optionally gated by each interval's ``activities``).
         Contexts may overlap; multiple intervals for one context union into a
-        single column. The input frame is not mutated — a copy is returned.
+        single column. Surrounding whitespace in context names is stripped, so
+        ``' work '`` and ``'work'`` collapse into one column. The input frame is not
+        mutated — a copy is returned.
 
         Args:
             df: Activity DataFrame, timezone-aware DatetimeIndex, ``activity`` column.
@@ -443,17 +445,35 @@ class Exposures:
             A copy of ``df`` with one ``context__<name>`` boolean column per context.
 
         Raises:
-            ValueError: If the diary is invalid (see :meth:`_validate_diary`), the
-                index is not timezone-aware, or the diary and index timezones differ.
+            ValueError: If the diary is invalid (see :meth:`_validate_diary`); ``df``
+                has no ``activity`` column or a timezone-naive index; the diary
+                ``start``/``end`` zones differ from the index zone; or ``df`` already
+                has a ``context__<name>`` column that this call would create.
         """
         Exposures._validate_diary(diary)
 
+        if 'activity' not in df.columns:
+            raise ValueError("Activity DataFrame must have an 'activity' column.")
+
         if df.index.tz is None:
             raise ValueError('Activity DataFrame index must be timezone-aware.')
-        if str(diary['start'].dt.tz) != str(df.index.tz):
+
+        index_tz = str(df.index.tz)
+        for column in ('start', 'end'):
+            if str(diary[column].dt.tz) != index_tz:
+                raise ValueError(
+                    f"Diary '{column}' timezone ({diary[column].dt.tz}) does not "
+                    f'match activity index timezone ({df.index.tz}).'
+                )
+
+        diary = diary.copy()
+        diary['context'] = diary['context'].str.strip()
+
+        new_columns = {f'context__{context}' for context in diary['context'].unique()}
+        collisions = new_columns & set(df.columns)
+        if collisions:
             raise ValueError(
-                f"Diary timezone ({diary['start'].dt.tz}) does not match activity "
-                f'index timezone ({df.index.tz}).'
+                f'Activity DataFrame already has context columns: {sorted(collisions)}.'
             )
 
         df = df.copy()
