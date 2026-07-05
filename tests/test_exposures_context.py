@@ -71,3 +71,14 @@ class TestContextMask:
         assert mask.iloc[5] == False
         assert mask.iloc[3] == True
         assert mask.iloc[4] == True
+
+    def test_empty_intervals_all_false(self, activities, diary_factory):
+        diary = diary_factory([])
+        mask = Exposures._context_mask(activities, diary)
+        assert list(mask) == [False] * 10
+        assert mask.dtype == bool
+
+    def test_nan_activities_is_pure_interval(self, activities, diary_factory):
+        diary = diary_factory([('2024-09-02 07:00:02', '2024-09-02 07:00:05', 'work', float('nan'))])
+        mask = Exposures._context_mask(activities, diary)
+        assert list(mask) == [False, False, True, True, True, False, False, False, False, False]
