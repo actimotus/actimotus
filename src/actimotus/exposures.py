@@ -25,9 +25,13 @@ class Exposures:
     It supports generating results as raw DataFrame or visual plot.
 
     Attributes:
-        window: The time window for aggregation. Accepts a `timedelta` object
-            or a pandas-style string offset (e.g., `'1d'` for daily totals,
-            `'1h'` for hourly). Defaults to daily aggregation.
+        window: The time window for aggregation, as a pandas offset string.
+            Use uppercase calendar aliases for day/week windows (`'1D'` for
+            daily totals, `'7D'` for weekly); sub-day windows like `'1h'` also
+            work. Defaults to daily (`'1D'`). Day/week windows bucket on **local
+            calendar days**, so across a DST transition a fall-back day is a
+            genuine 25-hour window and a spring-forward day a 23-hour window
+            (labelled at local midnight) — this is correct, not a defect.
         fused: If `True`, granular activity categories are merged into broader
             semantic groups before calculation. This simplifies the output by
             combining physiologically similar states.
@@ -46,15 +50,11 @@ class Exposures:
 
         Weekly exposures with fused categories (grouping all walking types):
 
-        >>> exposures = Exposures(window='7d', fused=True)
+        >>> exposures = Exposures(window='7D', fused=True)
     """
 
-    window: str | timedelta = '1d'
+    window: str = '1D'
     fused: bool = False
-
-    def __post_init__(self):
-        if isinstance(self.window, str):
-            self.window = pd.Timedelta(self.window).to_pytimedelta()
 
     def _get_exposure(self, df: pd.DataFrame, valid: pd.Series, function: str) -> pd.Timedelta | int:
         if function == 'time':
@@ -176,7 +176,7 @@ class Exposures:
                 categories like 'sedentary' instead of granular ones.
 
         Examples:
-            >>> exposures = Exposures(window='1d', fused=False)
+            >>> exposures = Exposures(window='1D', fused=False)
             >>> results = exposures.compute(activity_epochs_df)
         """
         exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
