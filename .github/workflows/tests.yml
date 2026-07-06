@@ -1,0 +1,35 @@
+name: tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Span the pandas 2.x -> 3.x boundary: 3.0 changed timedelta offset
+        # resolution, which silently broke calendar-day grouping (see
+        # docs/superpowers/dst-daily-grouping-bug.md). Keep the floor from
+        # pyproject and the latest major here in sync as pandas releases.
+        pandas: ["2.2.3", "2.3.3", "3.0.3"]
+    name: pytest (pandas ${{ matrix.pandas }})
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Create environment (clean install, no dev group)
+        # Install from [project.dependencies] only, plus pytest and the matrix
+        # pandas. Avoids `uv sync`, so the local `../labda` dev path in the
+        # lockfile is never resolved.
+        run: |
+          uv venv --python 3.11
+          uv pip install -e . pytest "pandas==${{ matrix.pandas }}"
+      - name: Show resolved versions
+        run: uv run --no-project python -c "import pandas, numpy, scipy; print('pandas', pandas.__version__, '| numpy', numpy.__version__, '| scipy', scipy.__version__)"
+      - name: Run tests
+        run: uv run --no-project pytest -q
