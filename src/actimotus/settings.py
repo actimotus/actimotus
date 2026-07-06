@@ -113,6 +113,7 @@ CONFIG = {
             'bout': 15,
             'movement_threshold': 0.075,
             'inclination_angle': 87.5,
+            'inclination_upper': 110.0,
         },
         'shuffle': {
             'bout': 2,
