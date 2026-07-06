@@ -15,6 +15,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyarrow" },
+    { name = "scipy" },
     { name = "vegafusion" },
 ]
 
@@ -44,6 +45,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pyarrow", specifier = ">=20.0.0" },
+    { name = "scipy", specifier = ">=1.13.0" },
     { name = "vegafusion", specifier = ">=2.0.2" },
 ]
 

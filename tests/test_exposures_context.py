@@ -56,8 +56,9 @@ class TestValidateDiary:
             Exposures._validate_diary(diary)
 
     def test_non_string_context_raises(self, diary_factory):
-        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)])
-        diary.loc[0, 'context'] = 123
+        # Build the bad value directly: assigning an int into an all-string
+        # context column is rejected at assignment under pandas >= 3.0 (str dtype).
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 123, None)])
         with pytest.raises(ValueError, match='context'):
             Exposures._validate_diary(diary)
 

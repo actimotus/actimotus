@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `Exposures` daily/weekly windows now bucket on **local calendar days** across DST transitions (a fall-back day is one 25-hour window, spring-forward one 23-hour window, all labelled at local midnight). Previously the window string was coerced to a `timedelta` in `__post_init__`; under pandas ≥ 3.0 that resolves to a fixed 24-hour tick, which drifted daily boundaries off local midnight and duplicated the fall-back date. The string is now passed straight to `pd.Grouper` (a calendar `<Day>` offset on all supported pandas versions).
+- Declared the missing `scipy` runtime dependency (imported by `features` and `classifications.thigh`). Fresh installs previously relied on `scipy` arriving transitively and failed to `import actimotus` without it.
 
 ### Changed
 - `Exposures.window` is now typed `str` (was `str | timedelta`) and defaults to `'1D'` (was `'1d'`); use uppercase pandas offset aliases (`'1D'`, `'7D'`) — lowercase `'d'` is deprecated in pandas 3.0.
