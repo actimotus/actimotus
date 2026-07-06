@@ -88,8 +88,10 @@ class Features:
         if len(time_subset) < 2:
             raise ValueError('DataFrame must have at least 2 samples to calculate sampling frequency.')
 
-        # Convert to nanoseconds then to seconds for time differences
-        time_diffs_seconds = pd.Series(np.diff(time_subset.astype('int64')) / 1e9)
+        # Resolution-agnostic: total_seconds() is correct for any datetime64 unit
+        # ([ns]/[us]/[ms]). A raw int64 view assumes ns and is wrong by 10^3/10^6
+        # under pandas>=2, which preserves non-ns resolutions (e.g. [ms] parquets).
+        time_diffs_seconds = pd.Series(time_subset).diff().dt.total_seconds()
 
         sf = time_diffs_seconds.mode().values[0]
 
@@ -474,7 +476,7 @@ class Features:
             A tuple containing timestamps, data, features, and verbose arrays.
         """
         df = df.copy()
-        df.index = df.index.astype(np.int64) // 10**6  # Time in milliseconds
+        df.index = df.index.as_unit('ms').astype(np.int64)  # Time in ms (resolution-agnostic)
         df.drop(columns=['sum_y', 'sq_sum_y'], inplace=True)
 
         df.fillna(0, inplace=True)
@@ -521,7 +523,7 @@ class Features:
         """Converts a DataFrame to the SENS format."""
 
         df = df / SENS__NORMALIZATION_FACTOR
-        timestamps = (df.index.astype(np.int64) // 10**6).values
+        timestamps = (df.index.as_unit('ms').astype(np.int64)).values  # ms (resolution-agnostic)
         timestamps = np.array([timestamps])
 
         data = df.values

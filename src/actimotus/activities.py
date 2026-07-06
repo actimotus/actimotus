@@ -313,7 +313,7 @@ class Activities:
         df['verbose'] = 0
         df['verbose'] = df['verbose'].astype(np.int32)
 
-        df.index = df.index.astype(np.int64) // 10**6  # Time in milliseconds
+        df.index = df.index.as_unit('ms').astype(np.int64)  # Time in ms (resolution-agnostic)
 
         return (
             df.index.values,
