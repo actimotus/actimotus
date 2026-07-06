@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-07-06
+
+### Added
+- Diary context mapping: `Exposures.context(df, diary)` annotates the 1-second activity series with boolean `context__<name>` columns derived from a diary of `[start, end, context, activities]` intervals. Supports overlapping contexts, per-interval activity gating, and multiple intervals per context (unioned into one column).
+
+### Changed
+- `Exposures.context` now takes a full diary — `context(df, diary)` — and returns a copy of the activity DataFrame with one `context__<name>` column per context, replacing the earlier experimental single-context `(df, intervals, context, activities)` signature.
+- Diary validation is strict: `Exposures.context` raises clear `ValueError`s for `NaT` timestamps, null/non-string/empty context values, malformed or unknown-label `activities`, a missing `activity` column, timezone mismatches between the diary and the activity index, and pre-existing `context__` column collisions. Surrounding whitespace in context names is normalized.
+- Datetime-to-integer conversions in `Activities` and `Features` are now resolution-agnostic, correct for non-nanosecond `datetime64` indices (e.g. `[ms]` parquet under pandas ≥ 2).
+
+### Fixed
+- Sampling-frequency detection and SENS timestamp export were off by a factor of 10³–10⁶ when the datetime index used a non-nanosecond resolution; conversions now use `.as_unit('ms')` / `.dt.total_seconds()`.
+
 ## [2.3.1] - 2026-02-03
 
 ### Changed
