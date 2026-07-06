@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Declared the missing `scipy` runtime dependency (imported by `features` and `classifications.thigh`). Fresh installs previously relied on `scipy` arriving transitively and failed to `import actimotus` without it.
 
 ### Changed
+- The daily `valid` flag is now `walk >= 5 min` (was `walk + stairs >= 10 min`). Stairs on a thigh sensor is a mounting/reference-angle-sensitive split of walking, so the walk+stairs sum can stay above threshold on a day where genuine walking was suppressed by an orientation artifact (the movement leaks into false `stairs`). Walk-only is a stricter, harder-to-fool data-quality floor. **Behaviour change:** windows previously marked valid on stairs alone are now invalid.
 - `Exposures.window` is now typed `str` (was `str | timedelta`) and defaults to `'1D'` (was `'1d'`); use uppercase pandas offset aliases (`'1D'`, `'7D'`) — lowercase `'d'` is deprecated in pandas 3.0.
 
 ## [2.3.2] - 2026-07-06

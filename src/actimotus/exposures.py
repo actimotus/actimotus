@@ -158,7 +158,10 @@ class Exposures:
 
         **Validity Criteria:**
         A window is marked as `valid` (True) if the subject performed at least
-        **10 minutes** of active movement (Stairs + Walk) within that period.
+        **5 minutes** of **walking** within that period. Walk-only (not walk+stairs):
+        stairs is easily confused with walking on a thigh sensor, so a walk+stairs
+        sum can mask a window where genuine walking was suppressed by an orientation
+        artifact.
 
         Args:
             df: A DataFrame containing 1-second activity epochs. It must be
@@ -185,7 +188,12 @@ class Exposures:
         if not self.fused:
             exposure = pd.concat([exposure, activities], axis=1)
 
-        valid = (activities['stairs'] + activities['walk']) >= pd.Timedelta(minutes=10)
+        # Walk-only floor (not walk+stairs): stairs on a thigh sensor is a
+        # mounting/reference-angle-sensitive split of walking, so a walk+stairs sum can
+        # stay high while genuine walking was suppressed by an orientation artifact. A
+        # functional wearer walks at least a few minutes a day, so walk >= 5 min is a
+        # stricter, harder-to-fool data-quality floor.
+        valid = activities['walk'] >= pd.Timedelta(minutes=5)
 
         exposure.insert(
             0,
