@@ -129,9 +129,9 @@ class TestContextMask:
         # Interval end at :05 must exclude the :05 epoch
         diary = diary_factory([('2024-09-02 07:00:03', '2024-09-02 07:00:05', 'work', None)])
         mask = Exposures._context_mask(activities, diary)
-        assert mask.iloc[5] == False
-        assert mask.iloc[3] == True
-        assert mask.iloc[4] == True
+        assert not mask.iloc[5]
+        assert mask.iloc[3]
+        assert mask.iloc[4]
 
     def test_empty_intervals_all_false(self, activities, diary_factory):
         diary = diary_factory([])
@@ -165,8 +165,8 @@ class TestContext:
             ('2024-09-02 07:00:02', '2024-09-02 07:00:04', 'commute', None),
         ])
         result = Exposures.context(activities, diary)
-        assert result['context__work-day'].iloc[2] == True
-        assert result['context__commute'].iloc[2] == True
+        assert result['context__work-day'].iloc[2]
+        assert result['context__commute'].iloc[2]
 
     def test_multiple_intervals_one_column(self, activities, diary_factory):
         diary = diary_factory([
