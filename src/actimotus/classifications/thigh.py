@@ -192,9 +192,19 @@ class Thigh(Sensor):
         bout: int,
         movement_threshold: float,
         inclination_angle: float,
+        inclination_upper: float = 180.0,
         **kwargs,
     ) -> pd.Series:
-        valid = (inclination_angle < df['inclination']) & (movement_threshold < df['sd_x'])
+        # Lower bound: thigh at/past horizontal. Upper bound: reject the inverted
+        # regime (inclination = arccos(x) exceeds ~110deg only when x is clearly
+        # negative = device upside-down / feet-up), which real rowing never reaches.
+        # Excluded windows fall through to sit/lie; every class above sit is gated
+        # below 87.5deg, so there is no path into an MVPA misclassification.
+        valid = (
+            (inclination_angle < df['inclination'])
+            & (df['inclination'] < inclination_upper)
+            & (movement_threshold < df['sd_x'])
+        )
         valid = self._median_filter(valid, bout)
         valid.name = 'row'
 
