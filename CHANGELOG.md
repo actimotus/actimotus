@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-07-07
+
 ### Fixed
 - Thigh `row` (rowing) is no longer emitted for an inverted device or feet-up lying. `get_row` had a lower inclination bound (`87.5°`) but no upper bound, so `inclination = arccos(x)` values from `~90°` up to `180°` (i.e. `x` negative, device upside-down) with any leg motion were misclassified as rowing — the only class with a lower but no upper inclination bound — and folded into MVPA. A configurable `inclination_upper` (default `110.0` in the shipped config) now caps it; excluded windows fall through to `sit`/`lie` (every class above `sit` is gated below `87.5°`, so no MVPA leak). Backwards compatible: the `get_row` parameter defaults to `180.0` (a no-op) when a caller does not supply it.
 - `Exposures` daily/weekly windows now bucket on **local calendar days** across DST transitions (a fall-back day is one 25-hour window, spring-forward one 23-hour window, all labelled at local midnight). Previously the window string was coerced to a `timedelta` in `__post_init__`; under pandas ≥ 3.0 that resolves to a fixed 24-hour tick, which drifted daily boundaries off local midnight and duplicated the fall-back date. The string is now passed straight to `pd.Grouper` (a calendar `<Day>` offset on all supported pandas versions).
