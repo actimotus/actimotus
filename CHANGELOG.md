@@ -7,28 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.3.3] - 2026-07-07
-
-### Fixed
-- Thigh `row` (rowing) is no longer emitted for an inverted device or feet-up lying. `get_row` had a lower inclination bound (`87.5°`) but no upper bound, so `inclination = arccos(x)` values from `~90°` up to `180°` (i.e. `x` negative, device upside-down) with any leg motion were misclassified as rowing — the only class with a lower but no upper inclination bound — and folded into MVPA. A configurable `inclination_upper` (default `110.0` in the shipped config) now caps it; excluded windows fall through to `sit`/`lie` (every class above `sit` is gated below `87.5°`, so no MVPA leak). Backwards compatible: the `get_row` parameter defaults to `180.0` (a no-op) when a caller does not supply it.
-- `Exposures` daily/weekly windows now bucket on **local calendar days** across DST transitions (a fall-back day is one 25-hour window, spring-forward one 23-hour window, all labelled at local midnight). Previously the window string was coerced to a `timedelta` in `__post_init__`; under pandas ≥ 3.0 that resolves to a fixed 24-hour tick, which drifted daily boundaries off local midnight and duplicated the fall-back date. The string is now passed straight to `pd.Grouper` (a calendar `<Day>` offset on all supported pandas versions).
-- Declared the missing `scipy` runtime dependency (imported by `features` and `classifications.thigh`). Fresh installs previously relied on `scipy` arriving transitively and failed to `import actimotus` without it.
-
-### Changed
-- The daily `valid` flag is now `walk >= 5 min` (was `walk + stairs >= 10 min`). Stairs on a thigh sensor is a mounting/reference-angle-sensitive split of walking, so the walk+stairs sum can stay above threshold on a day where genuine walking was suppressed by an orientation artifact (the movement leaks into false `stairs`). Walk-only is a stricter, harder-to-fool data-quality floor. **Behaviour change:** windows previously marked valid on stairs alone are now invalid.
-- `Exposures.window` is now typed `str` (was `str | timedelta`) and defaults to `'1D'` (was `'1d'`); use uppercase pandas offset aliases (`'1D'`, `'7D'`) — lowercase `'d'` is deprecated in pandas 3.0.
-
-## [2.3.2] - 2026-07-06
+## [2.3.2] - 2026-07-07
 
 ### Added
 - Diary context mapping: `Exposures.context(df, diary)` annotates the 1-second activity series with boolean `context__<name>` columns derived from a diary of `[start, end, context, activities]` intervals. Supports overlapping contexts, per-interval activity gating, and multiple intervals per context (unioned into one column).
 
 ### Changed
+- The daily `valid` flag is now `walk >= 5 min` (was `walk + stairs >= 10 min`). Stairs on a thigh sensor is a mounting/reference-angle-sensitive split of walking, so the walk+stairs sum can stay above threshold on a day where genuine walking was suppressed by an orientation artifact (the movement leaks into false `stairs`). Walk-only is a stricter, harder-to-fool data-quality floor. **Behaviour change:** windows previously marked valid on stairs alone are now invalid.
+- `Exposures.window` is now typed `str` (was `str | timedelta`) and defaults to `'1D'` (was `'1d'`); use uppercase pandas offset aliases (`'1D'`, `'7D'`) — lowercase `'d'` is deprecated in pandas 3.0.
 - `Exposures.context` now takes a full diary — `context(df, diary)` — and returns a copy of the activity DataFrame with one `context__<name>` column per context, replacing the earlier experimental single-context `(df, intervals, context, activities)` signature.
 - Diary validation is strict: `Exposures.context` raises clear `ValueError`s for `NaT` timestamps, null/non-string/empty context values, malformed or unknown-label `activities`, a missing `activity` column, timezone mismatches between the diary and the activity index, and pre-existing `context__` column collisions. Surrounding whitespace in context names is normalized.
 - Datetime-to-integer conversions in `Activities` and `Features` are now resolution-agnostic, correct for non-nanosecond `datetime64` indices (e.g. `[ms]` parquet under pandas ≥ 2).
 
 ### Fixed
+- Thigh `row` (rowing) is no longer emitted for an inverted device or feet-up lying. `get_row` had a lower inclination bound (`87.5°`) but no upper bound, so `inclination = arccos(x)` values from `~90°` up to `180°` (i.e. `x` negative, device upside-down) with any leg motion were misclassified as rowing — the only class with a lower but no upper inclination bound — and folded into MVPA. A configurable `inclination_upper` (default `110.0` in the shipped config) now caps it; excluded windows fall through to `sit`/`lie` (every class above `sit` is gated below `87.5°`, so no MVPA leak). Backwards compatible: the `get_row` parameter defaults to `180.0` (a no-op) when a caller does not supply it.
+- `Exposures` daily/weekly windows now bucket on **local calendar days** across DST transitions (a fall-back day is one 25-hour window, spring-forward one 23-hour window, all labelled at local midnight). Previously the window string was coerced to a `timedelta` in `__post_init__`; under pandas ≥ 3.0 that resolves to a fixed 24-hour tick, which drifted daily boundaries off local midnight and duplicated the fall-back date. The string is now passed straight to `pd.Grouper` (a calendar `<Day>` offset on all supported pandas versions).
+- Declared the missing `scipy` runtime dependency (imported by `features` and `classifications.thigh`). Fresh installs previously relied on `scipy` arriving transitively and failed to `import actimotus` without it.
 - Sampling-frequency detection and SENS timestamp export were off by a factor of 10³–10⁶ when the datetime index used a non-nanosecond resolution; conversions now use `.as_unit('ms')` / `.dt.total_seconds()`.
 
 ## [2.3.1] - 2026-02-03
