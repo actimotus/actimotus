@@ -401,14 +401,26 @@ class Thigh(Sensor):
         thigh_angle = np.arcsin(df['y'] / np.sqrt(np.square(df['y']) + np.square(df['z'])))  # type: pd.Series # type:ignore
         thigh_angle = np.absolute(np.degrees(thigh_angle))  # type: pd.Series # type:ignore
 
-        low = (thigh_angle < orientation_threshold).diff()
-        high = (thigh_angle >= orientation_threshold).diff()
+        # `low` and `high` must be DIRECTED crossings. The previous form took
+        # .diff() of a boolean and of its own complement:
+        #
+        #     low  = (thigh_angle <  orientation_threshold).diff()
+        #     high = (thigh_angle >= orientation_threshold).diff()
+        #
+        # A boolean changes exactly when its negation changes, so those two
+        # series were identical and the `low & high` conjunction in get_lie was
+        # vacuous -- a bout was reclassified on ONE crossing in EITHER
+        # direction, rather than on having rotated down and back up as
+        # intended. Verified on a real 698,607-second recording:
+        # low.sum() == high.sum() == 11,937 and (low == high).all().
+        above = (thigh_angle >= orientation_threshold).astype(int)
+        step = above.diff()
 
         noise = thigh_angle.diff().abs()  # type: float # type: ignore
         noise = noise >= noise_margin
 
-        low = low & noise
-        high = high & noise
+        high = (step == 1) & noise   # crossed UP through the threshold
+        low = (step == -1) & noise   # crossed DOWN through the threshold
 
         return pd.DataFrame({'low': low, 'high': high}, index=df.index)
 
