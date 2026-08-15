@@ -7,6 +7,43 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "actfast"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/ad/dec076b4f394225fabd6c800fafeb7df485b25525a58820d0f1e005486c9/actfast-1.3.0.tar.gz", hash = "sha256:e79045a14903fe9dca180aaf82e828af1b3e3f6100be07af58b681729583a8fc", size = 115646, upload-time = "2026-05-15T18:52:38.195Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/fa/686e543060e95d5f0977c865dac9717e62e455a7ae20ce02eb5e07086954/actfast-1.3.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:3dda444dddd7152e4f46fa31b2b564f7c15934313cb16fdec0d75ef419448b84", size = 403909, upload-time = "2026-05-15T18:52:25.513Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/02/6cae51b0a1c9b5645799c6003f08cd79e5320104642f36daecd71fd69fd6/actfast-1.3.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:516a0a6b6b93471764bfefadf992266320c82c2bc0f8b1a6be0a4cb842459290", size = 390081, upload-time = "2026-05-15T18:52:32.339Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/24/fad2bd0dc5c5e192f1acdf79b8da6819407f6cc667d61ffa3109279c7286/actfast-1.3.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:962c4e3b2d2787a72e4203de31bce7f93d1846fbd9ac973d4bf732c49e49a9d1", size = 437753, upload-time = "2026-05-15T18:52:41.041Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/81/8c3133db18ebced68f0e49afea394eb9ea10b8f0aa29674edd4249073133/actfast-1.3.0-cp310-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:86f9d8cacdf849beacb8306fe379467eff33428c33a2e79aafa8201efa2cc0d3", size = 443717, upload-time = "2026-05-15T18:52:28.661Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/98/aee3b480ded88acc39ae4ac001f372dab6bc3200353d52f523b1c5032f79/actfast-1.3.0-cp310-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:5b10e41f58fcb909809d2609f50f846d8f42c2262063f21c8493e1b5515b5bc3", size = 554888, upload-time = "2026-05-15T18:52:49.268Z" },
+    { url = "https://files.pythonhosted.org/packages/52/55/ded309a587f2dae59e80e63b3944c478768f273c6940a6d40e259948ed69/actfast-1.3.0-cp310-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:dec23ca62c62137e4b5b41d87c4ff4a91e0ce1b63bb13ab400a538960cc69b67", size = 465175, upload-time = "2026-05-15T18:52:26.71Z" },
+    { url = "https://files.pythonhosted.org/packages/df/8a/5cec78d9e918447d1fbb376d922753e46901e76e9c297748fa2aa467193e/actfast-1.3.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6b586cc284a44553d65144cd3888a66b51e0305914472c5483155b62c9af22b9", size = 458515, upload-time = "2026-05-15T18:52:38.953Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/c9/8737dd94b9cf52ac1ff54cbb0f60db069ebaa6c53c835533ed9bbf9c78ed/actfast-1.3.0-cp310-abi3-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:718b319293652611ccc8bd18740f4070053b713cc1498c7b44550d43c4c70906", size = 471086, upload-time = "2026-05-15T18:52:31.337Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/6a/64567400b89bc91a3d12b7e5bd7ec11ffa2b9b356ce9d529207c4922c4fd/actfast-1.3.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:ace04e14e29b9fd1b8da2706c9aec5eebe50945b534d91345f30a0deb09b53bf", size = 613643, upload-time = "2026-05-15T18:52:42.377Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/d4/ceb174f4c4d74775ee12454ae9678069f7bbf194a311cfdfff1d1b046ef7/actfast-1.3.0-cp310-abi3-musllinux_1_2_armv7l.whl", hash = "sha256:b5718c6dc37c7b95ec4b2a76753a028b2cc27adec789e282e45ec1cf187807f0", size = 718210, upload-time = "2026-05-15T18:52:44.641Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/aa/d5c28d051f91b15bd2776c551778ab04bcafb7803a075c0558b370b54cd7/actfast-1.3.0-cp310-abi3-musllinux_1_2_i686.whl", hash = "sha256:54dc1d7fdb19b89b140fced7aa111fc84e4065fd1b6bbb69d7286fd2237397b8", size = 683605, upload-time = "2026-05-15T18:52:23.202Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/d9/3a86551321c41e0fe5315abcae3e66aae9c59cba9b8dae116ecc55f81c08/actfast-1.3.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:988da79514b95da5da7275351584153d7ee6a1ecfa177c48223f51e5cbe12439", size = 653900, upload-time = "2026-05-15T18:52:36.162Z" },
+    { url = "https://files.pythonhosted.org/packages/66/fc/3fdac96427b961a7bb1d6e0c87544a4f56e44c78a803841a1c7f99e3a3e1/actfast-1.3.0-cp310-abi3-win32.whl", hash = "sha256:69cc70c1c5839f307014aeb945e98c0ae6ba46976c125fdfa730056807d4fd90", size = 275521, upload-time = "2026-05-15T18:52:45.749Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/74/6594470f2fefb9d825cfaec3f4cfafc75c4a90a174ae12427a76e69fbbbe/actfast-1.3.0-cp310-abi3-win_amd64.whl", hash = "sha256:be0034831bd0a699d137289c821ec8477dd30a8e8ce14c2d13a810b512e6b8e6", size = 292138, upload-time = "2026-05-15T18:52:40.055Z" },
+    { url = "https://files.pythonhosted.org/packages/44/80/533fc579dbcc2b412ba3deebe7a327006f19ed3f9a6b63d3846be8069555/actfast-1.3.0-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:1517f46df3a95f7d82ed5253a8e8be14347168ceeb582ae038df5b1bf1874dbc", size = 399731, upload-time = "2026-05-15T18:52:33.589Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/ff/fbe26588fad45d36039beadb7cbd209c186d78890e86f33b0adfb5d27c1a/actfast-1.3.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:87b258d95c3e7766f9db0e770afecf8098dc50513783c467cce0c4deae9256a9", size = 386545, upload-time = "2026-05-15T18:52:50.185Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/d8/e888247bd869653a86f4e73a0e08cd35d42226968e16cfb1c3189e6fc254/actfast-1.3.0-cp314-cp314t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3204fd93a5e51a26e6c07ddf37f0b9b58461bc4320a7afd9593f5651748151ae", size = 433545, upload-time = "2026-05-15T18:52:29.942Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/fe/36716839f482cfcaba035dcd8a5af41adfec9b88df6b8e1a97ae4ead0e01/actfast-1.3.0-cp314-cp314t-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:d1507d55c1becb2a6787832278598b730fb7e3f20d7cee03815f906025df04d5", size = 439775, upload-time = "2026-05-15T18:52:48.261Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/26/bb19f1a22180bb5f6834fd24a30791b31eb110c2e31fe5ddfcaef7289f19/actfast-1.3.0-cp314-cp314t-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:1d6c2318354fdd739bfeb5398d3d6320ef34deda36dd402c86d6122489027f40", size = 549016, upload-time = "2026-05-15T18:52:27.71Z" },
+    { url = "https://files.pythonhosted.org/packages/af/57/35470e6fbcbbd4786a7d2fa7d4e415870da34e5ddf8f069bc21991f0f745/actfast-1.3.0-cp314-cp314t-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:e18960779a6e0f84bb0ec4714369746e000a473714b75db546750d5d245bc97a", size = 461113, upload-time = "2026-05-15T18:52:43.428Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/78/fa7d54f0df57000240bc61ff5e355cf07af9c7943afbcedeac844b0bcbad/actfast-1.3.0-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:070e9a4074c8fb7eedbdb50f8944e62e931115c324a97c5fbba9bfecb2a7d46a", size = 452512, upload-time = "2026-05-15T18:52:20.369Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/a2/7ba9b07bc2a39f21ac2e648187025f40dfab393ea638b58abbed294c0836/actfast-1.3.0-cp314-cp314t-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:53d2bacdd36ea594893d6e58911c29fc94dcd4ad81c53734bfd8d3286c9b9835", size = 465241, upload-time = "2026-05-15T18:52:51.118Z" },
+    { url = "https://files.pythonhosted.org/packages/31/f9/87ea71e926a9b693ffd2d24398672a6b074f892115b9eeab8031084b02d1/actfast-1.3.0-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:772a1808da9561ba22f88aa47b6ea3d7cad7a96340f59f0561548fca4f0aed68", size = 609080, upload-time = "2026-05-15T18:52:34.932Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/7b/3449e4403e786d3067adb326693acdb7340c9ba5552d781d7715de730b04/actfast-1.3.0-cp314-cp314t-musllinux_1_2_armv7l.whl", hash = "sha256:b19375073bc622afb519ba39f6e8f0c2a2aca6bd702dec8124fa8e969bef4da6", size = 714272, upload-time = "2026-05-15T18:52:24.307Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/44/f73d9552b80826d8520165daba36b1c70d73fcec938c2ea5cb9a2d1489e3/actfast-1.3.0-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:782e88727072a4fad9f93374a12f397acd306d91cce7bba203933ececffc2b46", size = 678806, upload-time = "2026-05-15T18:52:21.633Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/58/39c354d2894d791f1ca6bd54c507f8ebb1c57870ab6ca0a455c39f5c2894/actfast-1.3.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:2b87f7a5e6e923e878228249db8c6d0f75df071073435ea64a0eb67f71412ddc", size = 649442, upload-time = "2026-05-15T18:52:37.276Z" },
+]
+
+[[package]]
 name = "acti-motus"
 version = "2.3.2"
 source = { editable = "." }
@@ -21,6 +58,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "actfast" },
     { name = "actipy" },
     { name = "ipykernel" },
     { name = "kaleido" },
@@ -51,6 +89,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "actfast", specifier = ">=1.3.0" },
     { name = "actipy", specifier = ">=3.8.0" },
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "kaleido", specifier = "==0.2.1" },
