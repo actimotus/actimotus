@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Thigh rotational crossings are now directed. `_get_rotational_crossing_points` computed `low` and `high` as the `.diff()` of a boolean and of its own negation — the same series — which made the `low & high` conjunction in `get_lie` vacuous: a sitting bout was reclassified as lying on a single crossing in *either* direction, rather than on having rotated down and back up as the conjunction intends.
 - Orientation correction no longer corrupts `sd_x`/`sd_z` when a sensor is both upside down and inside out. `fix_sensor_orientation` negated `sum_dot_xz` (the sum of `x*z` over the window) in all three flip branches, but that branch negates **both** `x` and `z`, so `(-x)(-z)` leaves the cross term unchanged — the two single-flip branches compose into it, so their sign factors must compose too. `Thigh._rotate_sd` uses `sum_dot_xz` to rebuild the axis standard deviations after rotating by the reference angle, so the wrong sign propagated into every activity gate: at the default `-16°` reference angle it inflated median `sd_x` from `0.004` to `0.161` and moved 50% of seconds across the `stand` movement threshold. Verified end-to-end on a labelled thigh recording (HARTH S015) processed from a fully inverted mount with `orientation=True`: agreement against video ground truth goes from **9.8% to 79.5%**, matching the score for the same recording supplied in the correct frame. **Only affects `orientation=True` with both flips detected**; correctly-mounted recordings and the default `orientation=False` are unchanged.
 
 ## [2.3.2] - 2026-07-07
@@ -86,6 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default logger.
 - Multithreaded processing.
 
-[Unreleased]: https://github.com/acti-motus/acti-motus/compare/v2.3.0...HEAD
-[2.3.0]: https://github.com/acti-motus/acti-motus/releases/tag/v2.3.0
-[2.2.0]: https://github.com/acti-motus/acti-motus/releases/tag/v2.2.0
+[Unreleased]: https://github.com/actimotus/actimotus/compare/v2.3.2...HEAD
+[2.3.2]: https://github.com/actimotus/actimotus/releases/tag/v2.3.2
+[2.3.1]: https://github.com/actimotus/actimotus/releases/tag/v2.3.1
+[2.3.0]: https://github.com/actimotus/actimotus/releases/tag/v2.3.0
+[2.2.0]: https://github.com/actimotus/actimotus/releases/tag/v2.2.0

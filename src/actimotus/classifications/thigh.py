@@ -445,8 +445,12 @@ class Thigh(Sensor):
         df['specific'] = False
         df.loc[df['bout'].isin(specific_bouts), 'specific'] = True
 
+        # EITHER direction converts the bout. Rolling the thigh past the threshold is what
+        # distinguishes lying from sitting, and rolling onto your side and staying there is
+        # exactly as much evidence of lying as rolling over and back. Requiring both would
+        # mean a bout that only rotates one way -- lie down, do not move again -- stays `sit`.
         updated_bouts = df[df['specific']].groupby('bout').aggregate({'low': 'any', 'high': 'any'})
-        updated_bouts = updated_bouts[updated_bouts['low'] & updated_bouts['high']]
+        updated_bouts = updated_bouts[updated_bouts['low'] | updated_bouts['high']]
         df['lie'] = False
         df.loc[df['bout'].isin(updated_bouts.index), 'lie'] = True
 
