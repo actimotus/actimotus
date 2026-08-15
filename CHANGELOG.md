@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Orientation correction no longer corrupts `sd_x`/`sd_z` for a sensor detected as both upside down and inside out. That branch negates both `x` and `z`, which leaves the cross term `sum_dot_xz` unchanged, but it was negated anyway — and `Thigh._rotate_sd` uses it to rebuild the axis standard deviations, so the wrong sign reached every activity gate. **Only affects `orientation=True` with both flips detected**; the default `orientation=False` is unaffected.
 
 ### Changed
-- Thigh rotational crossings are now computed as directed up/down crossings. The previous form took `.diff()` of a boolean and of its own negation, which in pandas is XOR and so produced two identical series. `get_lie` combines the two directions with **or**, so rolling the thigh past the orientation threshold in either direction still converts a sitting bout to lying, exactly as before. **No behaviour change:** per-second activity labels are identical to 2.3.2 across a 69-hour thigh recording.
+- Thigh rotational crossings are now computed as directed up/down crossings. The previous form took `.diff()` of a boolean and of its own negation, which in pandas is XOR and so produced two identical series. `get_lie` combines the two directions with **or**, so rolling the thigh past the orientation threshold in either direction still converts a sitting bout to lying, exactly as before. **No behaviour change:** per-second activity labels should be identical to 2.3.2.
 
 ## [2.3.2] - 2026-07-07
 
