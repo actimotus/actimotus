@@ -152,8 +152,15 @@ class Sensor(ABC):
         inside_out = self.check_inside_out_flip(df)
         columns, text = None, None
 
+        # Each branch is a 180 degree rotation about one axis, and `sum_dot_xz` (sum of x*z
+        # over the window) picks up the PRODUCT of the two axis signs. The single flips
+        # negate exactly one of x/z, so it changes sign; the combined flip negates BOTH, so
+        # (-x)(-z) leaves it unchanged. The two single flips compose into the combined one,
+        # so their sign factors must compose too: (-1) * (-1) = +1. `_rotate_sd` uses it as
+        # the cross term, so a wrong sign here corrupts sd_x and sd_z -- and those gate
+        # every thigh activity.
         if upside_down and inside_out:
-            columns = ['x', 'z', 'sum_x', 'sum_z', 'sum_dot_xz', 'direction']
+            columns = ['x', 'z', 'sum_x', 'sum_z', 'direction']
             text = 'upside down and inside out'
 
         elif inside_out:
