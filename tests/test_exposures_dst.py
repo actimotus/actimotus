@@ -76,3 +76,15 @@ def test_default_window_emits_no_pandas_deprecation_warning():
         Exposures().compute(df)
 
     assert not any("'d' is deprecated" in str(w.message) for w in caught)
+
+
+def test_default_activities_size_emits_no_pandas_deprecation_warning():
+    # The default chunk size must use the non-deprecated 'D' alias, not lowercase 'd'.
+    from actimotus import Activities
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        activities = Activities()
+
+    assert activities.size == pd.Timedelta(days=1)
+    assert not any("'d' is deprecated" in str(w.message) for w in caught)

@@ -6,10 +6,10 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from numpy.fft import fft as np_fft
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy import signal
 
+from .cadence import RUN_SEARCH_BAND, RUN_STRIDE_BAND, long_axis_angle, step_rate
 from .calibration import AutoCalibrate
 from .iterators import DataFrameIterator
 from .settings import FEATURES, SENS__FLOAT_FACTOR, SENS__NORMALIZATION_FACTOR
@@ -222,44 +222,24 @@ class Features:
 
         return pd.Series(hl_ratio, name='hl_ratio')
 
-    def _get_steps_feature(self, arr: np.ndarray) -> np.ndarray:
-        """Computes the steps feature from an array."""
-
-        window = self.system_frequency * 4  # 120 (system frequency = 30) samples equal to 2 seconds
-        steps_window = 4 * window  # 480 (system frequency = 30) samples equal to 8 seconds
-        half_size = window * 2  # 240 (system frequency = 30) samples equal to 4 seconds
-        arr = arr.astype(np.float32)
-
-        pad_width = window - 1
-        arr = np.pad(arr, (0, pad_width), mode='edge')
-
-        windows = sliding_window_view(arr, window)[:: self.system_frequency]
-        windows = windows - np.mean(windows, axis=1, keepdims=True, dtype=np.float32)
-
-        fft_result = np_fft(windows, steps_window)[:, :half_size]
-        magnitudes = 2 * np.abs(fft_result)
-
-        return np.argmax(magnitudes, axis=1)
-
     def get_steps_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculates walking and running features from accelerometer data."""
+        """Calculates walking and running features from accelerometer data, both in Hz.
 
-        axis_x = df['acc_x'].values
-        nyquist_frequency = self.get_nyquist_freq(self.system_frequency)
+        Both are the step rate of the thigh's angle from vertical (see `cadence`), searched in two
+        bands: `walk_feature` from about 50 to 215 steps a minute, `run_feature` from 120 to 264.
+        """
 
-        b, a = signal.butter(6, 2.5 / nyquist_frequency, 'low')
-        filtered = signal.lfilter(b, a, axis_x, axis=0)
-
-        b, a = signal.butter(6, 1.5 / nyquist_frequency, 'high')
-        walk = signal.lfilter(b, a, filtered, axis=0)
-
-        b, a = signal.butter(6, 3 / nyquist_frequency, 'high')
-        run = signal.lfilter(b, a, walk)
+        angle = long_axis_angle(df)
 
         df = pd.DataFrame(
             {
-                'walk_feature': self._get_steps_feature(walk),
-                'run_feature': self._get_steps_feature(run),
+                'walk_feature': step_rate(angle, self.system_frequency),
+                'run_feature': step_rate(
+                    angle,
+                    self.system_frequency,
+                    stride_band=RUN_STRIDE_BAND,
+                    search_band=RUN_SEARCH_BAND,
+                ),
             },
         )
 

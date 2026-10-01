@@ -2,10 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Version numbers have the form MAJOR.MINOR.PATCH, but a minor version can contain breaking changes.
+Each breaking change is marked **Breaking**.
 
-## [Unreleased]
+## [2.4.0] - Unreleased
+
+### Added
+- **Walking is split into three paces in both presets**, by its step rate: `slow-walk` below 100 steps a minute (new class), `walk` from 100 to below 115, `fast-walk` from 115. `slow-walk` is walking below 4 km/h, the Compendium's edge between light and moderate. **`DEFAULT` judges each second on its own** (after a median of three seconds). On three walking-speed datasets (128 people, 117 of them scored) it scores 0.8365 macro F1 over the three paces and 0.8732 on light against moderate, where 2.3.3 scored 0.4062. **`LEGACY` judges each walking second by the mean step rate of the walking seconds in the minute around it**, the closest match to its 2.3.3 rule (two classes split at 100 steps a minute over 60 s blocks). The thigh config key is `'pace': {'slow': 100, 'fast': 115, 'window': 1}` (`window` 60 in `LEGACY`).
+- `slow-walk` is in the fused map (to `walk`), both plots, every exposure that counts walking, and the trunk's reference angle.
+- **The intensity bands are configurable.** `settings.INTENSITY` lists which activities count as `sedentary`, `lpa` and `mvpa`, and which count in no band (`none`: non-wear and stand). `Exposures(intensity=...)` takes a mapping of the same shape, for example to count standing as sedentary. Every activity must be in exactly one of the four bands, so they add up to the whole recording; a mapping that leaves one out, lists one twice or names an unknown one is refused with a `ValueError`. The default gives the same exposures as before.
+
+### Changed
+- **Breaking: the activity codes are renumbered** from still to active: 0 non-wear, 1 lie, 2 sit, 3 kneel, 4 squat, 5 stand, 6 shuffle, 7 slow-walk, 8 walk, 9 fast-walk, 10 run, 11 stairs, 12 bicycle, 13 row. A code stored by 2.3.3 or earlier means a different class here, and the SENS export uses the new codes.
+- **Breaking: `walk` is now moderate, so `Exposures` counts it in `mvpa`** (it was in `lpa`), and `slow-walk` in `lpa`. **Output from 2.3.3 or earlier uses `walk` for light walking, and `Exposures` now counts it as `mvpa` without an error.** Compute exposures for such output with 2.3.3.
+- **Breaking: no preset turns walking into running by its step rate** (`run` has no `steps` key). With a correct step rate that rule only turned fast child walking into running; `run_threshold` already catches every run.
+- **Breaking: the 2.3.3 `fast-walk` rule is removed**, with `Thigh.get_steps` and the internal `steps` column. A thigh config without a `pace` entry is refused with a `ValueError` that says so.
+- The `Exposures` activity columns are in the code order, from still to active, in place of an order set by chance.
+- The daily `valid` flag counts walking at any pace (`slow-walk` + `walk` + `fast-walk` >= 5 min).
+- **Breaking:** `walk_feature` and `run_feature` are now step rates in Hz. Before, both were FFT bin numbers (0-239), and `Thigh.get_steps` changed them to Hz. The column names are the same, but the values are not. **Features stored by 2.3.3 or earlier must not be classified by this version, nor the reverse:** a bin number read as Hz, or Hz read as a bin number, gives wrong walking classes without an error.
+- `walk_feature` is now read from the thigh's angle from vertical (new `actimotus.cadence` module) in place of a 1.5-2.5 Hz band-pass on the long axis. The band-pass was right only between 90 and 150 steps a minute: below that it read about 1.5 times the true rate, above it about half. Against counted steps (84 treadmill stages, 21 adults) the new feature puts 98.7% of seconds within 10%.
+- `run_feature` is now read the same way as `walk_feature`, from the thigh's angle from vertical, but searched only from 120 to 264 steps a minute (`cadence.RUN_STRIDE_BAND`). The shipped band-pass saw only about 130-206 steps a minute. Against the back sensor on child running, the new feature halves 0.2% of seconds and is about 6% low above 200 steps a minute, where the band-pass was about 9% low. On adults the two agree.
+- Step features are transformed in blocks: a 24 h recording at 30 Hz now needs about 145 MB in place of about 980 MB.
+
+### Removed
+- **Breaking:** the `steps` column is no longer in the thigh output of `get_activities`, and it is no longer computed. In the SENS export, the `steps` slot stays in place and is always 0, so the columns after it do not move.
+
+### Fixed
+- **Walking no longer reads as `stairs` on a recording with little brisk walking.** The line between `walk` and `stairs` is the median `direction` of a pool of walking seconds, plus `stairs_threshold`. That pool took only seconds with `sd_x` above 0.25 and had no upright test, so slow walking was left out and lying with leg movement was let in. On a recording with little brisk walking the median then fell, and walking read as `stairs`. The pool is now the seconds `get_walk` and `get_stairs` judge: `sd_x` above the preset's `movement_threshold`, below `run_threshold`, and `inclination` below the preset's `inclination_angle`. On three walking-speed datasets (128 people, no stairs), walking read as `stairs` falls from 22.6% to 0.0% on one of them and is unchanged on the other two. On HARTH (127 people, free-living, with stair labels) walking read as walking rises from 88.3% to 89.3%, and stairs read as `stairs` from 70.6% to 72.1% (`DEFAULT`).
+- **A recording with no walking to measure no longer reads its walking as `stairs`.** On an empty pool the stairs threshold fell back to `stairs_threshold` alone (5 deg in `DEFAULT`, 4 in `LEGACY`), far below walking, and on one older adult in HARTH 380 of 489 walking seconds read as `stairs`. It now falls back to `stairs_threshold` + 10 deg, the median walking direction measured on 255 people (10.5 deg), and it does so on any pool under 10 s: from 10 s up, a person's own median is closer to their full-recording value than the fallback is.
+- The default chunk `size` of `Activities` and `DataFrameIterator` is `'1D'` in place of `'1d'`, which pandas 3 deprecates. The same 24 hours.
+- Every step rate read about 6% low: the FFT bin was scaled as 0.0588 Hz where it is 0.0625 Hz. Both features are now computed by the new estimator, which has no such scale.
 
 ## [2.3.3] - 2026-08-15
 
@@ -91,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default logger.
 - Multithreaded processing.
 
-[Unreleased]: https://github.com/actimotus/actimotus/compare/v2.3.3...HEAD
+[2.4.0]: https://github.com/actimotus/actimotus/compare/v2.3.3...HEAD
 [2.3.3]: https://github.com/actimotus/actimotus/releases/tag/v2.3.3
 [2.3.2]: https://github.com/actimotus/actimotus/releases/tag/v2.3.2
 [2.3.1]: https://github.com/actimotus/actimotus/releases/tag/v2.3.1

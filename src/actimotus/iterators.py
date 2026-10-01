@@ -7,7 +7,7 @@ class DataFrameIterator:
     def __init__(
         self,
         df: pd.DataFrame,
-        size: str | timedelta = '1d',
+        size: str | timedelta = '1D',
         overlap: str | timedelta = '15min',
     ) -> None:
         size = pd.Timedelta(size).to_pytimedelta()

@@ -42,14 +42,17 @@ class Activities:
         chunks: If `True`, processes data in overlapping chunks to simulate
             cloud/streaming infrastructure.
         size: The duration of each processing chunk. Accepts a `timedelta`
-            object or a pandas-style string alias (e.g., `'1d'`, `'1h'`).
+            object or a pandas-style string alias (e.g., `'1D'`, `'1h'`).
         overlap: The duration of overlap between consecutive chunks. Accepts a
             `timedelta` object or a string alias (e.g., `'15min'`).
         config: The configuration for activity recognition thresholds.
             Can be a dictionary of custom parameters, or a preset string:
 
-            * `'DEFAULT'`: Standard thresholds for general population.
-            * `'LEGACY'`: Older threshold values for backward compatibility.
+            * `'DEFAULT'`: Standard thresholds for general population. Walking is split into
+              three paces by its step rate: `slow-walk` (below 100 steps a minute, light),
+              `walk` (100 to 115, moderate) and `fast-walk` (from 115, moderate).
+            * `'LEGACY'`: Older threshold values for backward compatibility, with the same three
+              walking paces, each walking second judged by the minute around it.
 
     Examples:
         Standard usage with default configuration:
@@ -70,7 +73,7 @@ class Activities:
     vendor: Literal['Sens', 'Other'] = 'Other'
     orientation: bool = False
     chunks: bool = False
-    size: str | timedelta = '1d'
+    size: str | timedelta = '1D'
     overlap: str | timedelta = '15min'
     config: dict[str, Any] | Literal['DEFAULT', 'LEGACY'] = 'DEFAULT'
 

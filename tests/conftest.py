@@ -7,9 +7,7 @@ TZ = 'Europe/Copenhagen'
 @pytest.fixture
 def activities():
     """Ten 1-second epochs, 2024-09-02 07:00:00..07:00:09 (Europe/Copenhagen)."""
-    index = pd.date_range(
-        '2024-09-02 07:00:00', periods=10, freq='1s', tz=TZ, name='datetime'
-    )
+    index = pd.date_range('2024-09-02 07:00:00', periods=10, freq='1s', tz=TZ, name='datetime')
     labels = ['walk', 'walk', 'sit', 'sit', 'lie', 'lie', 'stand', 'walk', 'sit', 'lie']
     return pd.DataFrame({'activity': labels}, index=index)
 

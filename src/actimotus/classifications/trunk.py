@@ -22,7 +22,7 @@ class Trunk(Sensor):
         default_angle = np.array([27, 27, 0])
         angle_status = Calculation.DEFAULT
 
-        walk = df[(~df['non-wear']) & (df['activity'].isin(['walk', 'fast-walk']))]
+        walk = df[(~df['non-wear']) & (df['activity'].isin(['slow-walk', 'walk', 'fast-walk']))]
 
         if not walk.empty:
             y = np.radians(np.median(walk['direction']) - 6)
@@ -145,7 +145,7 @@ class Trunk(Sensor):
     ) -> pd.DataFrame:
         thigh_config = self.config['thigh']
         config = self.config['trunk']
-        bouts_length = {activity[0]: activity[1]['bout'] for activity in thigh_config.items()}
+        bouts_length = {name: settings['bout'] for name, settings in thigh_config.items() if 'bout' in settings}
 
         activities = activities.copy()
         df = df.copy()

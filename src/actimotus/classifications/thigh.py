@@ -237,20 +237,35 @@ class Thigh(Sensor):
     def _get_stairs_threshold(
         self,
         df: pd.DataFrame,
+        movement_threshold: float,
         run_threshold: float,
+        inclination_angle: float,
         anterior_posterior_angle: float,
         stairs_threshold: float,
     ) -> float:
-        valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (
-            df['direction'] < anterior_posterior_angle
+        default_direction = 10  # NOTE: Median walking direction on 255 people in six datasets: 10.5 deg.
+        min_pool = 10  # NOTE: Seconds. From 10 s up, the pool's median beats the default direction.
+
+        # The pool is the seconds `get_walk` and `get_stairs` judge: moving, upright, below running.
+        # It used `sd_x` above 0.25 and no upright test, so slow walking was left out and lying was
+        # let in. On a recording with little brisk walking the median then fell, and walking read
+        # as stairs.
+        valid = (
+            df['sd_x'].between(movement_threshold, run_threshold, inclusive='neither')
+            & (df['inclination'] < inclination_angle)
+            & (df['direction'] < anterior_posterior_angle)
         )
 
         valid = df.loc[valid, 'direction']
 
-        # FIXME: Maybe get different threshold if no valid data is found.
-        if valid.empty:
-            logger.warning('No valid data found for stairs threshold calculation. Using default stairs threshold.')
-            valid = stairs_threshold
+        # With too little walking to measure, assume a typical median direction. `stairs_threshold` alone
+        # (5 deg) sits far below walking and turned a whole recording of walking into stairs.
+        if len(valid) < min_pool:
+            logger.warning(
+                f'Only {len(valid)} s of valid data for stairs threshold calculation (minimum {min_pool} s). '
+                f'Using a default walking direction of {default_direction} degrees.'
+            )
+            valid = stairs_threshold + default_direction
         else:
             valid = stairs_threshold + np.median(valid)  # type: ignore
             valid = valid.item()
@@ -269,7 +284,9 @@ class Thigh(Sensor):
         anterior_posterior_angle: float,
         **kwargs,
     ) -> tuple[pd.Series, float]:
-        stairs_threshold = self._get_stairs_threshold(df, run_threshold, anterior_posterior_angle, stairs_threshold)
+        stairs_threshold = self._get_stairs_threshold(
+            df, movement_threshold, run_threshold, inclination_angle, anterior_posterior_angle, stairs_threshold
+        )
 
         valid = (
             (stairs_threshold < df['direction'])
@@ -419,8 +436,8 @@ class Thigh(Sensor):
         noise = thigh_angle.diff().abs()  # type: float # type: ignore
         noise = noise >= noise_margin
 
-        high = (step == 1) & noise   # crossed UP through the threshold
-        low = (step == -1) & noise   # crossed DOWN through the threshold
+        high = (step == 1) & noise  # crossed UP through the threshold
+        low = (step == -1) & noise  # crossed DOWN through the threshold
 
         return pd.DataFrame({'low': low, 'high': high}, index=df.index)
 
@@ -456,33 +473,35 @@ class Thigh(Sensor):
 
         return df['lie']
 
-    def get_steps(self, df: pd.DataFrame) -> pd.Series:
-        df = df[['activity', 'walk_feature', 'run_feature']].copy()
-        scale = self.system_frequency / 2 * np.linspace(0, 1, 256)
+    @staticmethod
+    def pace_settings(config: dict[str, Any]) -> dict[str, float]:
+        """The thigh config's `pace` entry: the two cut-points in steps a minute, and the window in seconds."""
+        if 'pace' not in config:
+            raise ValueError(
+                "The thigh config needs a 'pace' entry, e.g. {'slow': 100, 'fast': 115, 'window': 1}. "
+                "The 'fast-walk' keys of 2.3.3 are no longer read."
+            )
 
-        df['steps'] = 0
-        df.loc[df['activity'].isin(['walk', 'stairs']), 'steps'] = df['walk_feature']
-        df.loc[(df['activity'] == 'run'), 'steps'] = df['run_feature']
-        df['steps'] = scale[df['steps']]
-        df['steps'] = medfilt(df['steps'], 3)
+        return config['pace']
 
-        return df['steps'].astype(np.float32)
+    def get_walking_pace(self, df: pd.DataFrame, slow: float, fast: float, window: int = 1) -> None:
+        """Splits walking into three paces by its step rate, in steps a minute.
 
-    def get_fast_walking_and_running(
-        self, df: pd.DataFrame, fast_walk_steps: float, running_frequency: float, bouts_length: dict[str, int]
-    ) -> None:
-        df.loc[(df['activity'].isin(['walk'])) & (df['steps'] > running_frequency), 'activity'] = 'run'
-        for activity in ['run', 'walk']:
-            df['activity'] = self.fix_bouts(df['activity'], activity, bouts_length[activity])
+        `slow-walk` below `slow`, `walk` from `slow` to below `fast`, `fast-walk` from `fast`. The step
+        rate is `walk_feature` with a median of three seconds, which removes a single wrong second.
+        With `window` 1 each second is judged on its own; DEFAULT does this, as a wider window cost
+        accuracy when the rule was tuned. A wider window judges each walking second by the mean
+        step rate of the walking seconds around it, centred; other seconds do not count.
+        """
+        rate = pd.Series(medfilt(df['walk_feature'].to_numpy(np.float64), 3) * 60, index=df.index)
+        walking = df['activity'] == 'walk'
 
-        df['activity'] = df['activity'].cat.add_categories(['fast-walk'])
-        window = f'{bouts_length["fast-walk"]}s'
-        fast_walk = (
-            df.loc[df['activity'] == 'walk', 'steps'].groupby(pd.Grouper(freq=window), observed=False).transform('sum')  # type: ignore
-        ) > fast_walk_steps
-        fast_walk = fast_walk[fast_walk]
+        if window > 1:
+            rate = rate.where(walking).rolling(f'{window}s', center=True, min_periods=1).mean()
 
-        df.loc[fast_walk.index, 'activity'] = 'fast-walk'
+        df['activity'] = df['activity'].cat.add_categories(['slow-walk', 'fast-walk'])
+        df.loc[walking & (rate < slow), 'activity'] = 'slow-walk'
+        df.loc[walking & (rate >= fast), 'activity'] = 'fast-walk'
 
     def compute_activities(
         self,
@@ -516,7 +535,7 @@ class Thigh(Sensor):
         df['sit'] = self.get_sit(df, **config['sit'])
 
         df['activity'] = self._get_activity_column(df)
-        bouts_length = {activity[0]: activity[1]['bout'] for activity in config.items()}
+        bouts_length = {name: settings['bout'] for name, settings in config.items() if 'bout' in settings}
         df['activity'] = self._fix_activities_bouts(df, bouts_length)
 
         df['lie'] = self.get_lie(df, **config['lie'])
@@ -528,14 +547,7 @@ class Thigh(Sensor):
         df.loc[non_wear, 'activity'] = 'non-wear'
         del non_wear
 
-        df['steps'] = self.get_steps(df)
-
-        self.get_fast_walking_and_running(
-            df,
-            config['fast-walk']['steps'],
-            config['run']['steps'],
-            bouts_length,
-        )
+        self.get_walking_pace(df, **self.pace_settings(config))
 
         df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
         df.rename(
@@ -549,4 +561,4 @@ class Thigh(Sensor):
 
         references.update_angle(bouts, 'thigh')
 
-        return df[['activity', 'steps', 'thigh_inclination', 'thigh_side_tilt', 'thigh_direction']]
+        return df[['activity', 'thigh_inclination', 'thigh_side_tilt', 'thigh_direction']]
