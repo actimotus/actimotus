@@ -27,10 +27,18 @@ FLIPS = {
 }
 
 STATISTICS = [
-    'x', 'y', 'z',
-    'sd_x', 'sd_y', 'sd_z',
-    'sum_x', 'sum_y', 'sum_z',
-    'sq_sum_x', 'sq_sum_y', 'sq_sum_z',
+    'x',
+    'y',
+    'z',
+    'sd_x',
+    'sd_y',
+    'sd_z',
+    'sum_x',
+    'sum_y',
+    'sum_z',
+    'sq_sum_x',
+    'sq_sum_y',
+    'sq_sum_z',
     'sum_dot_xz',
     'hl_ratio',
 ]
@@ -110,7 +118,10 @@ def test_correction_recovers_the_upright_features(upright, upside_down, inside_o
 
     for column in STATISTICS:
         np.testing.assert_allclose(
-            corrected[column], upright[column], atol=1e-5, rtol=1e-3,
+            corrected[column],
+            upright[column],
+            atol=1e-5,
+            rtol=1e-3,
             err_msg=f'{column} not recovered for upside_down={upside_down}, inside_out={inside_out}',
         )
 

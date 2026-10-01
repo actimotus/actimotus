@@ -436,8 +436,8 @@ class Thigh(Sensor):
         noise = thigh_angle.diff().abs()  # type: float # type: ignore
         noise = noise >= noise_margin
 
-        high = (step == 1) & noise   # crossed UP through the threshold
-        low = (step == -1) & noise   # crossed DOWN through the threshold
+        high = (step == 1) & noise  # crossed UP through the threshold
+        low = (step == -1) & noise  # crossed DOWN through the threshold
 
         return pd.DataFrame({'low': low, 'high': high}, index=df.index)
 

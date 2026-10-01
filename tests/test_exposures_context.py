@@ -17,9 +17,7 @@ class TestValidateDiary:
             Exposures._validate_diary(diary)
 
     def test_naive_timestamps_raise(self, diary_factory):
-        diary = diary_factory(
-            [('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)], tz=None
-        )
+        diary = diary_factory([('2024-09-02 07:00', '2024-09-02 07:05', 'work', None)], tz=None)
         with pytest.raises(ValueError, match='timezone-aware'):
             Exposures._validate_diary(diary)
 
@@ -119,10 +117,12 @@ class TestContextMask:
         assert list(mask) == [False, False, True, True, True, False, False, False, False, False]
 
     def test_multiple_intervals_union(self, activities, diary_factory):
-        diary = diary_factory([
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'sleep', None),
-            ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'sleep', None),
-        ])
+        diary = diary_factory(
+            [
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'sleep', None),
+                ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'sleep', None),
+            ]
+        )
         mask = Exposures._context_mask(activities, diary)
         assert list(mask) == [True, True, False, False, False, False, False, False, True, True]
 
@@ -148,37 +148,41 @@ class TestContextMask:
 
 class TestContext:
     def test_adds_prefixed_boolean_columns(self, activities, diary_factory):
-        diary = diary_factory([
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'sleep', ['lie', 'sit']),
-            ('2024-09-02 07:00:02', '2024-09-02 07:00:05', 'work', None),
-        ])
+        diary = diary_factory(
+            [
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'sleep', ['lie', 'sit']),
+                ('2024-09-02 07:00:02', '2024-09-02 07:00:05', 'work', None),
+            ]
+        )
         result = Exposures.context(activities, diary)
         assert 'context__sleep' in result.columns
         assert 'context__work' in result.columns
         # :00 and :01 are 'walk' -> gated out of sleep
         assert list(result['context__sleep']) == [False] * 10
-        assert list(result['context__work']) == \
-            [False, False, True, True, True, False, False, False, False, False]
+        assert list(result['context__work']) == [False, False, True, True, True, False, False, False, False, False]
 
     def test_overlapping_contexts_both_true(self, activities, diary_factory):
-        diary = diary_factory([
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:10', 'work-day', None),
-            ('2024-09-02 07:00:02', '2024-09-02 07:00:04', 'commute', None),
-        ])
+        diary = diary_factory(
+            [
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:10', 'work-day', None),
+                ('2024-09-02 07:00:02', '2024-09-02 07:00:04', 'commute', None),
+            ]
+        )
         result = Exposures.context(activities, diary)
         assert result['context__work-day'].iloc[2]
         assert result['context__commute'].iloc[2]
 
     def test_multiple_intervals_one_column(self, activities, diary_factory):
-        diary = diary_factory([
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'sleep', None),
-            ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'sleep', None),
-        ])
+        diary = diary_factory(
+            [
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'sleep', None),
+                ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'sleep', None),
+            ]
+        )
         result = Exposures.context(activities, diary)
         sleep_cols = [c for c in result.columns if c.startswith('context__sleep')]
         assert sleep_cols == ['context__sleep']
-        assert list(result['context__sleep']) == \
-            [True, True, False, False, False, False, False, False, True, True]
+        assert list(result['context__sleep']) == [True, True, False, False, False, False, False, False, True, True]
 
     def test_does_not_mutate_input(self, activities, diary_factory):
         diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', None)])
@@ -210,18 +214,19 @@ class TestContext:
 
     def test_realistic_multi_context_call(self, activities, diary_factory):
         # activity fixture: ['walk','walk','sit','sit','lie','lie','stand','walk','sit','lie'] at :00..:09
-        diary = diary_factory([
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:10', 'work-day', None),
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'commute', None),
-            ('2024-09-02 07:00:02', '2024-09-02 07:00:04', 'work', None),
-            ('2024-09-02 07:00:04', '2024-09-02 07:00:06', 'sleep', ['lie']),
-        ])
+        diary = diary_factory(
+            [
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:10', 'work-day', None),
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:02', 'commute', None),
+                ('2024-09-02 07:00:02', '2024-09-02 07:00:04', 'work', None),
+                ('2024-09-02 07:00:04', '2024-09-02 07:00:06', 'sleep', ['lie']),
+            ]
+        )
         result = Exposures.context(activities, diary)
         assert list(result['context__work-day']) == [True] * 10
         assert list(result['context__commute']) == [True, True] + [False] * 8
         assert list(result['context__work']) == [False, False, True, True] + [False] * 6
-        assert list(result['context__sleep']) == \
-            [False, False, False, False, True, True, False, False, False, False]
+        assert list(result['context__sleep']) == [False, False, False, False, True, True, False, False, False, False]
 
     def test_missing_activity_column_raises(self, activities, diary_factory):
         df = activities.drop(columns=['activity'])
@@ -249,15 +254,16 @@ class TestContext:
         assert 'context__ work ' not in result.columns
 
     def test_whitespace_variants_merge_one_column(self, activities, diary_factory):
-        diary = diary_factory([
-            ('2024-09-02 07:00:00', '2024-09-02 07:00:02', ' work ', None),
-            ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'work', None),
-        ])
+        diary = diary_factory(
+            [
+                ('2024-09-02 07:00:00', '2024-09-02 07:00:02', ' work ', None),
+                ('2024-09-02 07:00:08', '2024-09-02 07:00:10', 'work', None),
+            ]
+        )
         result = Exposures.context(activities, diary)
         work_cols = [c for c in result.columns if c.startswith('context__work')]
         assert work_cols == ['context__work']
-        assert list(result['context__work']) == \
-            [True, True, False, False, False, False, False, False, True, True]
+        assert list(result['context__work']) == [True, True, False, False, False, False, False, False, True, True]
 
     def test_does_not_mutate_input_diary(self, activities, diary_factory):
         diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', ' work ', None)])
@@ -267,5 +273,4 @@ class TestContext:
     def test_pd_na_activities_no_gate(self, activities, diary_factory):
         diary = diary_factory([('2024-09-02 07:00:00', '2024-09-02 07:00:05', 'work', pd.NA)])
         result = Exposures.context(activities, diary)
-        assert list(result['context__work']) == \
-            [True, True, True, True, True, False, False, False, False, False]
+        assert list(result['context__work']) == [True, True, True, True, True, False, False, False, False, False]

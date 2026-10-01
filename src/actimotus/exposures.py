@@ -397,13 +397,9 @@ class Exposures:
 
         for column in ('start', 'end'):
             if not isinstance(diary[column].dtype, pd.DatetimeTZDtype):
-                raise ValueError(
-                    f"Diary column '{column}' must be timezone-aware datetimes."
-                )
+                raise ValueError(f"Diary column '{column}' must be timezone-aware datetimes.")
             if diary[column].isna().any():
-                raise ValueError(
-                    f"Diary column '{column}' contains NaT (missing timestamps)."
-                )
+                raise ValueError(f"Diary column '{column}' contains NaT (missing timestamps).")
 
         if (diary['end'] <= diary['start']).any():
             raise ValueError("Diary has rows where 'end' is not after 'start'.")
@@ -411,8 +407,7 @@ class Exposures:
         for context in diary['context']:
             if not isinstance(context, str) or not context.strip():
                 raise ValueError(
-                    f'Diary has an invalid context value: {context!r}. '
-                    'Context must be a non-empty string.'
+                    f'Diary has an invalid context value: {context!r}. ' 'Context must be a non-empty string.'
                 )
 
         if 'activities' in diary.columns:
@@ -421,21 +416,15 @@ class Exposures:
                 if isinstance(activities, list):
                     for label in activities:
                         if not isinstance(label, str):
-                            raise ValueError(
-                                f'Diary activities must be strings; got {label!r}.'
-                            )
+                            raise ValueError(f'Diary activities must be strings; got {label!r}.')
                         if label not in known:
                             raise ValueError(
-                                f'Diary activities contains unknown label {label!r}. '
-                                f'Known labels: {sorted(known)}.'
+                                f'Diary activities contains unknown label {label!r}. ' f'Known labels: {sorted(known)}.'
                             )
                 elif pd.api.types.is_scalar(activities) and pd.isna(activities):
                     continue  # missing == no gate
                 else:
-                    raise ValueError(
-                        f'Diary activities must be a list of labels or missing; '
-                        f'got {activities!r}.'
-                    )
+                    raise ValueError(f'Diary activities must be a list of labels or missing; ' f'got {activities!r}.')
 
     @staticmethod
     def _context_mask(df: pd.DataFrame, intervals: pd.DataFrame) -> pd.Series:
@@ -461,9 +450,7 @@ class Exposures:
             in_interval = (df.index >= row.start) & (df.index < row.end)
 
             activities = row.activities if has_activities else None
-            if not (
-                pd.api.types.is_scalar(activities) and pd.isna(activities)
-            ) and len(activities) > 0:
+            if not (pd.api.types.is_scalar(activities) and pd.isna(activities)) and len(activities) > 0:
                 in_interval = in_interval & df['activity'].isin(activities).to_numpy()
 
             mask = mask | in_interval
@@ -519,9 +506,7 @@ class Exposures:
         new_columns = {f'context__{context}' for context in diary['context'].unique()}
         collisions = new_columns & set(df.columns)
         if collisions:
-            raise ValueError(
-                f'Activity DataFrame already has context columns: {sorted(collisions)}.'
-            )
+            raise ValueError(f'Activity DataFrame already has context columns: {sorted(collisions)}.')
 
         df = df.copy()
         for context, intervals in diary.groupby('context', sort=False):
