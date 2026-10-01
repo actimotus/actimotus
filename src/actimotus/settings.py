@@ -91,8 +91,7 @@ CONFIG = {
         # Walking is split into three paces by the step rate of each second, in steps a minute, with
         # no window: `slow-walk` below 100, `walk` from 100 to below 115, `fast-walk` from 115.
         # `slow-walk` is walking below 4 km/h, the Compendium's edge between light and moderate.
-        # Tuned on three walking-speed datasets; the record is `analysis/har-pace/SPEC.md` (sections
-        # 19 and 22) in the thesis repository.
+        # Tuned on three walking-speed datasets.
         'pace': {
             'slow': 100,
             'fast': 115,

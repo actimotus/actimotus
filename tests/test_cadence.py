@@ -7,8 +7,7 @@ bin is 0.0625 Hz, so every rate ran about 6% low. The repair reads the thigh's a
 which swings once per stride, finds the stride rate on its harmonics and doubles it.
 
 Validated against counted steps (84 treadmill stages, 21 adults, 73-112 steps/min): 98.7% of
-seconds within 10%, 0.05% doubled. That check needs the published dataset and lives in the
-`har-pace` analysis of the thesis repository; these tests need no data.
+seconds within 10%, 0.05% doubled. That check needs recorded data; these tests need none.
 """
 
 import numpy as np

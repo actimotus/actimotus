@@ -7,8 +7,7 @@ exactly twice the stride rate.
 
 It replaces a 1.5-2.5 Hz band-pass on the long axis, which was right only between 90 and 150 steps a
 minute. Against counted steps (84 treadmill stages, 21 adults) it puts 98.7% of seconds within 10%,
-with 0.05% doubled and 0.31% halved. The record of what was tried, and what each measured, is
-`analysis/har-pace/SPEC.md` (sections 16, 17 and 20) in the thesis repository.
+with 0.05% doubled and 0.31% halved.
 """
 
 import numpy as np

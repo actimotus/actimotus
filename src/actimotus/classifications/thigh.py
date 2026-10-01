@@ -237,20 +237,35 @@ class Thigh(Sensor):
     def _get_stairs_threshold(
         self,
         df: pd.DataFrame,
+        movement_threshold: float,
         run_threshold: float,
+        inclination_angle: float,
         anterior_posterior_angle: float,
         stairs_threshold: float,
     ) -> float:
-        valid = df['sd_x'].between(0.25, run_threshold, inclusive='neither') & (
-            df['direction'] < anterior_posterior_angle
+        default_direction = 10  # NOTE: Median walking direction on 255 people in six datasets: 10.5 deg.
+        min_pool = 10  # NOTE: Seconds. From 10 s up, the pool's median beats the default direction.
+
+        # The pool is the seconds `get_walk` and `get_stairs` judge: moving, upright, below running.
+        # It used `sd_x` above 0.25 and no upright test, so slow walking was left out and lying was
+        # let in. On a recording with little brisk walking the median then fell, and walking read
+        # as stairs.
+        valid = (
+            df['sd_x'].between(movement_threshold, run_threshold, inclusive='neither')
+            & (df['inclination'] < inclination_angle)
+            & (df['direction'] < anterior_posterior_angle)
         )
 
         valid = df.loc[valid, 'direction']
 
-        # FIXME: Maybe get different threshold if no valid data is found.
-        if valid.empty:
-            logger.warning('No valid data found for stairs threshold calculation. Using default stairs threshold.')
-            valid = stairs_threshold
+        # With too little walking to measure, assume a typical median direction. `stairs_threshold` alone
+        # (5 deg) sits far below walking and turned a whole recording of walking into stairs.
+        if len(valid) < min_pool:
+            logger.warning(
+                f'Only {len(valid)} s of valid data for stairs threshold calculation (minimum {min_pool} s). '
+                f'Using a default walking direction of {default_direction} degrees.'
+            )
+            valid = stairs_threshold + default_direction
         else:
             valid = stairs_threshold + np.median(valid)  # type: ignore
             valid = valid.item()
@@ -269,7 +284,9 @@ class Thigh(Sensor):
         anterior_posterior_angle: float,
         **kwargs,
     ) -> tuple[pd.Series, float]:
-        stairs_threshold = self._get_stairs_threshold(df, run_threshold, anterior_posterior_angle, stairs_threshold)
+        stairs_threshold = self._get_stairs_threshold(
+            df, movement_threshold, run_threshold, inclination_angle, anterior_posterior_angle, stairs_threshold
+        )
 
         valid = (
             (stairs_threshold < df['direction'])
