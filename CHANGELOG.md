@@ -2,14 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Version numbers have the form MAJOR.MINOR.PATCH, but a minor version can contain breaking changes.
+Each breaking change is marked **Breaking**.
 
-## [Unreleased]
+## [2.4.0] - Unreleased
 
 ### Added
-- **Walking is split into three paces in both presets**, by its step rate: `slow-walk` below 100 steps a minute (new class), `walk` from 100 to below 115, `fast-walk` from 115. `slow-walk` is walking below 4 km/h, the Compendium's edge between light and moderate. **`DEFAULT` judges each second on its own** (after a median of three seconds). On three walking-speed datasets (117 people) it scores 0.8365 macro F1 over the three paces and 0.8732 on light against moderate, where 2.3.3 scored 0.4062. **`LEGACY` judges each walking second by the mean step rate of the walking seconds in the minute around it**, the closest match to its 2.3.3 rule (two classes split at 100 steps a minute over 60 s blocks). The thigh config key is `'pace': {'slow': 100, 'fast': 115, 'window': 1}` (`window` 60 in `LEGACY`).
+- **Walking is split into three paces in both presets**, by its step rate: `slow-walk` below 100 steps a minute (new class), `walk` from 100 to below 115, `fast-walk` from 115. `slow-walk` is walking below 4 km/h, the Compendium's edge between light and moderate. **`DEFAULT` judges each second on its own** (after a median of three seconds). On three walking-speed datasets (128 people, 117 of them scored) it scores 0.8365 macro F1 over the three paces and 0.8732 on light against moderate, where 2.3.3 scored 0.4062. **`LEGACY` judges each walking second by the mean step rate of the walking seconds in the minute around it**, the closest match to its 2.3.3 rule (two classes split at 100 steps a minute over 60 s blocks). The thigh config key is `'pace': {'slow': 100, 'fast': 115, 'window': 1}` (`window` 60 in `LEGACY`).
 - `slow-walk` is in the fused map (to `walk`), both plots, every exposure that counts walking, and the trunk's reference angle.
+- **The intensity bands are configurable.** `settings.INTENSITY` lists which activities count as `sedentary`, `lpa` and `mvpa`, and which count in no band (`none`: non-wear and stand). `Exposures(intensity=...)` takes a mapping of the same shape, for example to count standing as sedentary. Every activity must be in exactly one of the four bands, so they add up to the whole recording; a mapping that leaves one out, lists one twice or names an unknown one is refused with a `ValueError`. The default gives the same exposures as before.
 
 ### Changed
 - **Breaking: the activity codes are renumbered** from still to active: 0 non-wear, 1 lie, 2 sit, 3 kneel, 4 squat, 5 stand, 6 shuffle, 7 slow-walk, 8 walk, 9 fast-walk, 10 run, 11 stairs, 12 bicycle, 13 row. A code stored by 2.3.3 or earlier means a different class here, and the SENS export uses the new codes.
@@ -115,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default logger.
 - Multithreaded processing.
 
-[Unreleased]: https://github.com/actimotus/actimotus/compare/v2.3.3...HEAD
+[2.4.0]: https://github.com/actimotus/actimotus/compare/v2.3.3...HEAD
 [2.3.3]: https://github.com/actimotus/actimotus/releases/tag/v2.3.3
 [2.3.2]: https://github.com/actimotus/actimotus/releases/tag/v2.3.2
 [2.3.1]: https://github.com/actimotus/actimotus/releases/tag/v2.3.1

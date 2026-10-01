@@ -167,6 +167,16 @@ FUSED_ACTIVITIES = {
     'stairs': 'walk',
 }
 
+# Every activity in exactly one intensity band, so the four bands add up to the whole recording.
+# `none` is counted in no band: non-wear, and standing, which is neither sedentary nor light here.
+# `Exposures(intensity=...)` takes a mapping of the same shape.
+INTENSITY = {
+    'sedentary': ['lie', 'sit', 'kneel'],
+    'lpa': ['squat', 'shuffle', 'slow-walk'],
+    'mvpa': ['walk', 'fast-walk', 'run', 'stairs', 'bicycle', 'row'],
+    'none': ['non-wear', 'stand'],
+}
+
 PLOT = {
     'activities': {
         'non-wear': {'text': 'Non-wear', 'color': '#BDBDBD'},

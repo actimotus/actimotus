@@ -6,7 +6,7 @@ from typing import Any
 import altair as alt
 import pandas as pd
 
-from .settings import ACTIVITIES, FUSED_ACTIVITIES, PLOT, PLOT_FUSED
+from .settings import ACTIVITIES, FUSED_ACTIVITIES, INTENSITY, PLOT, PLOT_FUSED
 
 #: Walking at every pace. `slow-walk` is light activity; `walk` and `fast-walk` are moderate.
 WALKING = ('slow-walk', 'walk', 'fast-walk')
@@ -44,6 +44,12 @@ class Exposures:
             * **Sedentary**: Combines *lie*, *sit*, and *kneel*.
             * **Standing**: Combines *stand*, *squat*, and *shuffle*.
             * **Walking**: Combines *slow-walk*, *walk*, *fast-walk*, and *stairs* climbing.
+        intensity: Which activities count as `sedentary`, `lpa` and `mvpa`, as a mapping with
+            exactly the keys `sedentary`, `lpa`, `mvpa` and `none`, each a list of activities.
+            Every activity must be in exactly one of the four, so the bands add up to the whole
+            recording; `none` is counted in no band. Defaults to `settings.INTENSITY`, which puts
+            *stand* and *non-wear* in `none`. A mapping that leaves an activity out, lists one
+            twice, or names an unknown one is refused with a `ValueError`.
 
     Examples:
         Standard daily exposures with full granular categories:
@@ -54,10 +60,46 @@ class Exposures:
         Weekly exposures with fused categories (grouping all walking types):
 
         >>> exposures = Exposures(window='7D', fused=True)
+
+        Standing counted as sedentary:
+
+        >>> from actimotus.settings import INTENSITY
+        >>> intensity = {**INTENSITY, 'sedentary': [*INTENSITY['sedentary'], 'stand'], 'none': ['non-wear']}
+        >>> exposures = Exposures(intensity=intensity)
     """
 
     window: str = '1D'
     fused: bool = False
+    intensity: dict[str, list[str]] | None = None
+
+    def __post_init__(self):
+        self.intensity = self._validate_intensity(INTENSITY if self.intensity is None else self.intensity)
+
+    @staticmethod
+    def _validate_intensity(intensity: dict[str, list[str]]) -> dict[str, list[str]]:
+        bands = ['sedentary', 'lpa', 'mvpa', 'none']
+        if not isinstance(intensity, dict) or sorted(intensity) != sorted(bands):
+            keys = sorted(intensity) if isinstance(intensity, dict) else type(intensity).__name__
+            raise ValueError(f'intensity must have exactly the keys {bands}; got {keys}.')
+
+        known = list(ACTIVITIES.values())
+        seen: dict[str, str] = {}
+        for band in bands:
+            activities = intensity[band]
+            if isinstance(activities, str) or not all(isinstance(a, str) for a in activities):
+                raise ValueError(f'intensity[{band!r}] must be a list of activity names; got {activities!r}.')
+            for activity in activities:
+                if activity not in known:
+                    raise ValueError(f'intensity[{band!r}] names an unknown activity: {activity!r}.')
+                if activity in seen:
+                    raise ValueError(f'{activity!r} is in two intensity bands: {seen[activity]!r} and {band!r}.')
+                seen[activity] = band
+
+        missing = [a for a in known if a not in seen]
+        if missing:
+            raise ValueError(f'Every activity must be in one intensity band; missing: {missing}.')
+
+        return {band: list(intensity[band]) for band in bands}
 
     def _get_exposure(self, df: pd.DataFrame, valid: pd.Series, function: str) -> pd.Timedelta | int:
         if function == 'time':
@@ -99,7 +141,7 @@ class Exposures:
         return valid
 
     def _get_exposures(self, df: pd.DataFrame) -> pd.Series:
-        sedentary = ['sit', 'lie', 'kneel']
+        sedentary = self.intensity['sedentary']  # type: ignore
 
         exposure = {
             'wear': self._get_exposure(df, df['activity'] != 'non-wear', 'time'),
@@ -111,16 +153,8 @@ class Exposures:
                 'time',
             ),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(sedentary), 'count'),
-            'lpa': self._get_exposure(
-                df,
-                df['activity'].isin(['shuffle', 'slow-walk', 'squat']),
-                'time',
-            ),
-            'mvpa': self._get_exposure(
-                df,
-                df['activity'].isin(['walk', 'fast-walk', 'run', 'stairs', 'bicycle', 'row']),
-                'time',
-            ),
+            'lpa': self._get_exposure(df, df['activity'].isin(self.intensity['lpa']), 'time'),  # type: ignore
+            'mvpa': self._get_exposure(df, df['activity'].isin(self.intensity['mvpa']), 'time'),  # type: ignore
         }
 
         if ('trunk_direction' in df.columns) and ('trunk_inclination' in df.columns):
