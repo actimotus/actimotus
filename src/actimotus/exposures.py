@@ -8,6 +8,9 @@ import pandas as pd
 
 from .settings import ACTIVITIES, FUSED_ACTIVITIES, PLOT, PLOT_FUSED
 
+#: Walking at every pace. `slow-walk` is light activity; `walk` and `fast-walk` are moderate.
+WALKING = ('slow-walk', 'walk', 'fast-walk')
+
 logger = logging.getLogger(__name__)
 
 alt.data_transformers.enable('vegafusion')
@@ -40,7 +43,7 @@ class Exposures:
 
             * **Sedentary**: Combines *lie*, *sit*, and *kneel*.
             * **Standing**: Combines *stand*, *squat*, and *shuffle*.
-            * **Walking**: Combines *walk*, *fast-walk*, and *stairs* climbing.
+            * **Walking**: Combines *slow-walk*, *walk*, *fast-walk*, and *stairs* climbing.
 
     Examples:
         Standard daily exposures with full granular categories:
@@ -75,7 +78,7 @@ class Exposures:
         upper: int,
     ) -> pd.Series:
         valid = (
-            df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs'])
+            df['activity'].isin(['stand', 'shuffle', *WALKING, 'run', 'stairs'])
             & (df['trunk_direction'] > 0)
             & (df['trunk_inclination'].between(lower, upper, inclusive='both'))
         )
@@ -89,7 +92,7 @@ class Exposures:
         upper: int,
     ) -> pd.Series:
         # FIXME: Most probably this should include all activities expect lying?
-        valid = df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk']) & (
+        valid = df['activity'].isin(['stand', 'shuffle', *WALKING]) & (
             df['arm_inclination'].between(lower, upper, inclusive='both')
         )
 
@@ -104,18 +107,18 @@ class Exposures:
             'standing': self._get_exposure(df, df['activity'].isin(['stand', 'shuffle']), 'time'),
             'on_feet': self._get_exposure(
                 df,
-                df['activity'].isin(['stand', 'shuffle', 'walk', 'fast-walk', 'run', 'stairs', 'squat']),
+                df['activity'].isin(['stand', 'shuffle', *WALKING, 'run', 'stairs', 'squat']),
                 'time',
             ),
             'sedentary_to_other': self._get_exposure(df, df['activity'].isin(sedentary), 'count'),
             'lpa': self._get_exposure(
                 df,
-                df['activity'].isin(['shuffle', 'walk', 'squat']),
+                df['activity'].isin(['shuffle', 'slow-walk', 'squat']),
                 'time',
             ),
             'mvpa': self._get_exposure(
                 df,
-                df['activity'].isin(['fast-walk', 'run', 'stairs', 'bicycle', 'row']),
+                df['activity'].isin(['walk', 'fast-walk', 'run', 'stairs', 'bicycle', 'row']),
                 'time',
             ),
         }
@@ -158,7 +161,7 @@ class Exposures:
 
         **Validity Criteria:**
         A window is marked as `valid` (True) if the subject performed at least
-        **5 minutes** of **walking** within that period. Walk-only (not walk+stairs):
+        **5 minutes** of **walking**, at any pace, within that period. Walking only (not stairs):
         stairs is easily confused with walking on a thigh sensor, so a walk+stairs
         sum can mask a window where genuine walking was suppressed by an orientation
         artifact.
@@ -184,6 +187,7 @@ class Exposures:
         """
         exposure = df.groupby(pd.Grouper(freq=self.window, sort=True)).apply(self._get_exposures)  # type: ignore
         activities = self._get_activities(df['activity'], ACTIVITIES.values())  # type: ignore
+        activities = activities[[a for a in ACTIVITIES.values() if a in activities.columns]]  # still to active
 
         if not self.fused:
             exposure = pd.concat([exposure, activities], axis=1)
@@ -191,9 +195,10 @@ class Exposures:
         # Walk-only floor (not walk+stairs): stairs on a thigh sensor is a
         # mounting/reference-angle-sensitive split of walking, so a walk+stairs sum can
         # stay high while genuine walking was suppressed by an orientation artifact. A
-        # functional wearer walks at least a few minutes a day, so walk >= 5 min is a
-        # stricter, harder-to-fool data-quality floor.
-        valid = activities['walk'] >= pd.Timedelta(minutes=5)
+        # functional wearer walks at least a few minutes a day, so walking >= 5 min is a
+        # stricter, harder-to-fool data-quality floor. Every pace counts: someone who walks
+        # only slowly still walks.
+        valid = activities[list(WALKING)].sum(axis=1) >= pd.Timedelta(minutes=5)
 
         exposure.insert(
             0,
