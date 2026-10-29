@@ -9,7 +9,7 @@ A Python-powered human activity recognition algorithm building upon [Acti4](http
 - Scientifically validated activity detection.
 - Device-independent, relies on RAW accelerometry.
 - **Minimum Requirement:** Single accelerometer worn on the thigh (front or side).
-- **Detects:** Lying, sitting, standing, walking, stair climbing, and bicycling.
+- **Detects:** Lying, sitting, standing, walking, running, stair climbing, and bicycling.
 - **Optional:** A back-worn sensor enhances lying/sitting detection; a calf-worn sensor adds squatting/kneeling detection.
 
 ## About predecessor Acti4
