@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 import numpy as np
 import pandas as pd
@@ -65,9 +65,19 @@ class Sens(FileParser):
         normalize: If `True`, raw values are multiplied by the normalization
             factor (`-4/512`) to convert them to g-force. If `False`, returns
             the raw integer counts from the sensor ADC. Defaults to `True`.
+        placement: Where the sensor was worn on the right thigh. `'front'` is the
+            placement that ActiMotus expects, and the axes are returned as read.
+            `'side'` is the lateral aspect of the thigh: the axes are turned 90 degrees
+            about the long axis of the thigh (`y = -z`, `z = y`, `x` unchanged), so the
+            data looks as if the sensor was worn on the front. Defaults to `'front'`.
     """
 
     normalize: bool = True
+    placement: Literal['front', 'side'] = 'front'
+
+    def __post_init__(self):
+        if self.placement not in ('front', 'side'):
+            raise ValueError(f"Invalid placement: {self.placement!r}. Expected 'front' or 'side'.")
 
     def _read(
         self,
@@ -93,7 +103,14 @@ class Sens(FileParser):
         if self.normalize:
             df = df * SENS_NORMALIZATION_FACTOR
 
-        return df.astype(np.float32)
+        df = df.astype(np.float32)
+
+        if self.placement == 'side':
+            # A scalar factor does not change a rotation, so the turn is the same with and without `normalize`.
+            # It is applied after the cast, because -(-32768) does not fit int16.
+            df = df.assign(acc_y=-df['acc_z'], acc_z=df['acc_y'])
+
+        return df
 
     def from_bin(self, path: str | Path) -> pd.DataFrame:
         """Reads and decodes a Sens binary file into a DataFrame.
