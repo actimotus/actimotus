@@ -192,7 +192,7 @@ PLOT = {
         'run': {'text': 'Running', 'color': '#FF7043'},
         'stairs': {'text': 'Stairs', 'color': '#D84315'},
         'bicycle': {'text': 'Bicycling', 'color': '#E53935'},
-        'row': {'text': 'Rowing', 'color': '#EC407A'},
+        'row': {'text': 'Rowing', 'color': '#AB47BC'},
     },
     'title': '24/7 Movement Behaviour',
     'x': 'Time',
