@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Version numbers have the form MAJOR.MINOR.PATCH, but a minor version can contain breaking changes.
 Each breaking change is marked **Breaking**.
 
+## [2.4.1rc1] - 2026-11-06
+
+### Added
+- **`Sens(placement=...)`**: where the SENS sensor was worn on the right thigh. `'front'` (default) is the placement that ActiMotus expects, and the axes stay as read. `'side'` is the lateral aspect of the thigh: the axes are turned 90 degrees about the long axis of the thigh (`y = -z`, `z = y`, `x` unchanged), so that the data looks as if the sensor was worn on the front. An unknown value is refused with a `ValueError`. Without the turn, sitting with a side sensor shows as `lie`, and no `bicycle` is found.
+
+### Changed
+- Rowing is purple in the activity plot, as in the fused plot. The pink before was close to the colours of bicycling and stairs.
+
 ## [2.4.0] - 2026-10-01
 
 ### Added
