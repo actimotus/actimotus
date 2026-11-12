@@ -188,6 +188,42 @@ class Features:
 
         return df
 
+    def label_by_time(self, rows: pd.DataFrame, timestamps: pd.DatetimeIndex, n_resampled: int) -> pd.DataFrame:
+        """Labels feature rows with whole seconds of real time.
+
+        Row k is centred on resampled sample k * system_frequency. The resampling treats the input samples
+        as evenly spaced, so if the real rate of the sensor drifts (SENS runs at about 12.38-12.49 Hz, not
+        12.5 Hz), that sample is not at start + k s, and rows labelled by counting run late, up to tens of
+        seconds over days. This finds the real centre time of each row from the time stamps, and gives each
+        whole second the row whose centre is nearest (at most 0.5 s away). The feature values do not change.
+        When the rate drifts, a row is now and then used for two seconds, or skipped.
+
+        Args:
+            rows: The feature rows of one segment, one row per second of resampled data, in order.
+            timestamps: The real time stamps of the segment before the resampling.
+            n_resampled: The number of resampled samples in the segment.
+
+        Returns:
+            The rows labelled with whole seconds, in the time zone of `timestamps`.
+        """
+        origin = timestamps[0].floor('s')
+        # Times relative to the origin keep float64 exact (absolute times in ns are about 1e18).
+        t = (timestamps.as_unit('ns').asi8 - origin.as_unit('ns').value).astype(np.float64)
+        n_in, n = len(t), len(rows)
+
+        # Resampled sample k * system_frequency comes from input position k * system_frequency * n_in / n_resampled.
+        position = np.arange(n) * self.system_frequency * (n_in / n_resampled)
+        centre = np.interp(position, np.arange(n_in), t)
+
+        # Each whole second inside the segment takes the row with the nearest centre.
+        seconds = np.arange(np.ceil(centre[0] / 1e9), np.floor(centre[-1] / 1e9) + 1) * 1e9
+        pick = np.clip(np.searchsorted(centre, seconds), 1, n - 1)
+        pick = np.where(seconds - centre[pick - 1] < centre[pick] - seconds, pick - 1, pick)
+
+        out = rows.iloc[pick].copy()
+        out.index = (origin + pd.to_timedelta(seconds.astype(np.int64), unit='ns')).rename('datetime')
+        return out
+
     def get_hl_ratio(self, df: pd.DataFrame) -> pd.Series:
         """Calculates the High-Low Ratio (HL-Ratio) from the Z-axis accelerometer data."""
 
@@ -334,8 +370,16 @@ class Features:
     ) -> pd.DataFrame:
         """Computes features for a single chunk of data."""
 
-        not_overlaps = df[~df['overlap']]
-        start, end = not_overlaps.index[0], not_overlaps.index[-1]
+        # Feature rows are labelled on whole seconds, but a chunk starts and ends between samples. Two neighbouring
+        # chunks cut at the same whole second, so that each row is kept exactly once: the first sample of the next
+        # chunk is the first sample after this chunk's own part (it is in this chunk's overlap).
+        inside = np.flatnonzero(~df['overlap'].to_numpy())
+        first, last = inside[0], inside[-1]
+        start = df.index[first].floor('s')
+        if last + 1 < len(df):
+            end = df.index[last + 1].floor('s')
+        else:
+            end = df.index[last].floor('s') + timedelta(seconds=1)
 
         df = self._compute(
             df.iloc[:, :3],
@@ -379,22 +423,15 @@ class Features:
             if segment.index[-1] - segment.index[0] < timedelta(seconds=5):
                 continue
 
+            timestamps = segment.index
             segment = self.resampling(segment, sampling_frequency)
             hl_ratio = self.get_hl_ratio(segment)
             steps_features = self.get_steps_features(segment)
             downsampled = self.downsampling(segment)
 
             n = min(len(hl_ratio), len(steps_features), len(downsampled))
-            start = segment.index[0].ceil('s')
-            segment = pd.concat([downsampled, hl_ratio, steps_features], axis=1)
-            segment = segment.iloc[:n]
-            segment.index = pd.date_range(
-                start=start,
-                periods=n,
-                freq=timedelta(seconds=1),
-                name='datetime',
-            )
-            dfs.append(segment)
+            rows = pd.concat([downsampled, hl_ratio, steps_features], axis=1).iloc[:n]
+            dfs.append(self.label_by_time(rows, timestamps, len(segment)))
 
         dfs = pd.concat(dfs)
         dfs['sf'] = sampling_frequency

@@ -8,6 +8,10 @@ Each breaking change is marked **Breaking**.
 
 ## [Unreleased]
 
+### Fixed
+- **Feature rows now stay on real time when the real sampling rate drifts.** Before, the resampling treated the samples as evenly spaced, and the rows were labelled by counting from the first whole second. SENS sensors run at about 12.38-12.49 Hz, not 12.5 Hz, and the rate changes during the day, so the labels ran late against the real time stamps: up to 40 s over 6 days with one block, and up to about 18 s with one block per day. Also, the rows were centred on the first sample but labelled from the next whole second, so they could be up to 1 s late. Now `Features` finds the real centre time of each row from the time stamps, and each whole second takes the row whose centre is nearest (at most 0.5 s away). The feature values do not change, and the extra cost is close to zero. When the rate drifts, a row is now and then used for two seconds, or skipped (1 row in 4,500 to 7,300 on two SENS recordings). Against video labels (thigh only, HARTH and Lendt et al.), accuracy goes up in 5 of 6 datasets, by up to 0.9 percentage points, and down by 0.2 points in the walking-speed dataset.
+- With `chunking=True`, the row at a chunk boundary is no longer lost. A chunk that starts a few milliseconds after a whole second (for example 00:00:00.008) used to drop the row of that second from both chunks; neighbouring chunks now cut at the same whole second, so each row is kept once.
+
 ### Changed
 - **New colours in the activity plot**, so that the groups are easy to tell apart, also for red- and green-blind readers. Each group has its own hue: sedentary blue (`lie`, `sit`, `kneel`), standing brown (`stand`, `shuffle`, `squat`), walking green (`slow-walk`, `walk`, `fast-walk`), and its own colour for `run` (red), `bicycle` (orange), `row` (purple) and `stairs` (yellow). Non-wear stays grey. In the fused plot, each category takes the colour of its main activity, and sedentary takes the lying blue. Before, standing and walking were both green-teal, and running, stairs and bicycling were all red-orange.
 
