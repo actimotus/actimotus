@@ -242,9 +242,11 @@ class Features:
         high = signal.filtfilt(b, a, axis_z, axis=0)
         high = np.abs(high.astype(np.float32))
 
-        pad_width = window - 1
-        high = np.pad(high, (0, pad_width), mode='edge')
-        low = np.pad(low, (0, pad_width), mode='edge')
+        # Window k is centred on second k, like the 2 s rows of `downsampling`, so that all features of a row
+        # describe the same time.
+        pad_width = (window // 2, window - window // 2 - 1)
+        high = np.pad(high, pad_width, mode='edge')
+        low = np.pad(low, pad_width, mode='edge')
 
         high_windows = sliding_window_view(high, window)[:: self.system_frequency]
         mean_high = np.mean(high_windows, axis=1, dtype=np.float32)

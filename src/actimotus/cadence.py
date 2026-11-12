@@ -156,7 +156,7 @@ def step_rate(
 ) -> np.ndarray:
     """Steps per second, from a signal that repeats once per stride; one value per second.
 
-    For each second it looks at the next 4 s and asks which rhythm in `stride_band` (by default 24 to
+    For each second it looks at the 4 s centred on it and asks which rhythm in `stride_band` (by default 24 to
     108 strides a minute) fits the signal best, counting the rhythm's overtones too. It checks that the winner is not half
     or double the true rhythm, and doubles it, because one stride is two steps. Not median-filtered.
 
@@ -179,7 +179,9 @@ def step_rate(
     b, a = signal.butter(4, [search_band[0] / nyquist, search_band[1] / nyquist], 'band')
     filtered = signal.filtfilt(b, a, np.asarray(x, dtype=np.float64))
 
-    padded = np.pad(filtered.astype(np.float32), (0, window - 1), mode='edge')
+    # Window k is centred on second k (samples k * fs - window / 2 to k * fs + window / 2), like the 2 s rows of
+    # `Features.downsampling`, so that all features of a row describe the same time.
+    padded = np.pad(filtered.astype(np.float32), (window // 2, window - window // 2 - 1), mode='edge')
     windows = sliding_window_view(padded, window)[::fs]
 
     stride_bins = np.empty(len(windows), dtype=np.float64)
