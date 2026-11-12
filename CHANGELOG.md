@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Version numbers have the form MAJOR.MINOR.PATCH, but a minor version can contain breaking changes.
 Each breaking change is marked **Breaking**.
 
+## [Unreleased]
+
+### Changed
+- **New colours in the activity plot**, so that the groups are easy to tell apart, also for red- and green-blind readers. Each group has its own hue: sedentary blue (`lie`, `sit`, `kneel`), standing brown (`stand`, `shuffle`, `squat`), walking green (`slow-walk`, `walk`, `fast-walk`), and its own colour for `run` (red), `bicycle` (orange), `row` (purple) and `stairs` (yellow). Non-wear stays grey. In the fused plot, each category takes the colour of its main activity, and sedentary takes the lying blue. Before, standing and walking were both green-teal, and running, stairs and bicycling were all red-orange.
+
 ## [2.4.1rc1] - 2026-11-06
 
 ### Added
