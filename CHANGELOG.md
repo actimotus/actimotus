@@ -10,27 +10,19 @@ Each breaking change is marked **Breaking**.
 
 ## [2.4.1] - 2026-11-12
 
-This release also contains the changes of 2.4.1rc1.
-
-### Fixed
-- **Feature rows now stay on real time when the real sampling rate drifts.** Before, the resampling treated the samples as evenly spaced, and the rows were labelled by counting from the first whole second. SENS sensors run at about 12.38-12.49 Hz, not 12.5 Hz, and the rate changes during the day, so the labels ran late against the real time stamps: up to 40 s over 6 days with one block, and up to about 18 s with one block per day. Also, the rows were centred on the first sample but labelled from the next whole second, so they could be up to 1 s late. Now `Features` finds the real centre time of each row from the time stamps, and each whole second takes the row whose centre is nearest (at most 0.5 s away). The feature values do not change, and the extra cost is close to zero. When the rate drifts, a row is now and then used for two seconds, or skipped (1 row in 4,500 to 7,300 on two SENS recordings). Against video labels (thigh only, HARTH and Lendt et al.), accuracy goes up in 5 of 6 datasets, by up to 0.9 percentage points, and down by 0.2 points in the walking-speed dataset.
-- **`hl_ratio`, `walk_feature` and `run_feature` now describe the same seconds as the other columns of their row.** Their 4 s window started at second k, so its centre was 2 s later than the 2 s rows of `x`, `y`, `z` and the standard deviations, which are centred on k. The window is now centred on k. Against video labels (thigh only, HARTH and Lendt et al.), this changes at most 0.06 % of the seconds and the accuracy by at most 0.01 percentage points, because `hl_ratio` is read only for bicycling (after a 9 s median) and `walk_feature` only for the walking pace. The pace boundaries can move by up to 2 s; this is not measured against video.
-- With `chunking=True`, the row at a chunk boundary is no longer lost. A chunk that starts a few milliseconds after a whole second (for example 00:00:00.008) used to drop the row of that second from both chunks; neighbouring chunks now cut at the same whole second, so each row is kept once.
-- **`Exposures.plot()` can be shown after a clean install.** ActiMotus turns on the `vegafusion` data transformer, and altair then needs `vl-convert-python` to show the chart; it was not a dependency, so a notebook failed with an `ImportError`. `vl-convert-python>=1.9.0` is now a dependency.
+### Added
+- **`Sens(placement=...)`**: where the SENS sensor was worn on the right thigh. `'front'` (default) is the placement that ActiMotus expects, and the axes stay as read. `'side'` is the lateral aspect of the thigh: the axes are turned 90 degrees about the long axis of the thigh, so that the data looks as if the sensor was worn on the front.
 
 ### Changed
-- **New colours in the activity plot**, so that the groups are easy to tell apart, also for red- and green-blind readers. Each group has its own hue: sedentary blue (`lie`, `sit`, `kneel`), standing brown (`stand`, `shuffle`, `squat`), walking green (`slow-walk`, `walk`, `fast-walk`), and its own colour for `run` (red), `bicycle` (orange), `row` (purple) and `stairs` (yellow). Non-wear stays grey. In the fused plot, each category takes the colour of its main activity, and sedentary takes the lying blue. Before, standing and walking were both green-teal, and running, stairs and bicycling were all red-orange.
+- **New colours in the activity plot**, so that the groups are easy to tell apart. Each group has its own hue: sedentary blue (`lie`, `sit`, `kneel`), standing brown (`stand`, `shuffle`, `squat`), walking green (`slow-walk`, `walk`, `fast-walk`), and its own colour for `run` (red), `bicycle` (orange), `row` (purple) and `stairs` (yellow). Non-wear stays grey.
 - **Python 3.13 and 3.14 are supported** (the classifiers list them). The tests pass on Python 3.11 to 3.14 with the newest numpy (2.5.4), pandas (3.1.1), scipy (1.18.1), pyarrow (26.0.1), altair (6.3.0) and vegafusion (2.0.3). The CI tests also run on pandas 3.1.1. The minimum versions of the other dependencies do not change.
 - No `inplace=True` where pandas 3.1 warns that pandas 4 removes it (PDEP-8). The results do not change.
-- Development: `labda` is no longer in the `dev` group, so `uv lock` and `uv sync` work without a `../labda` folder. Only `dev/custom_calibration.ipynb` uses it. `uv.lock` has the newest versions.
 
-## [2.4.1rc1] - 2026-11-06
-
-### Added
-- **`Sens(placement=...)`**: where the SENS sensor was worn on the right thigh. `'front'` (default) is the placement that ActiMotus expects, and the axes stay as read. `'side'` is the lateral aspect of the thigh: the axes are turned 90 degrees about the long axis of the thigh (`y = -z`, `z = y`, `x` unchanged), so that the data looks as if the sensor was worn on the front. An unknown value is refused with a `ValueError`. Without the turn, sitting with a side sensor shows as `lie`, and no `bicycle` is found.
-
-### Changed
-- Rowing is purple in the activity plot, as in the fused plot. The pink before was close to the colours of bicycling and stairs.
+### Fixed
+- **Feature rows stay on real time when the sampling rate drifts.** The rows were labelled by counting samples, so with SENS (about 12.4 Hz, not 12.5 Hz) they ran late, by up to 40 s over 6 days. Now each row gets its real time from the time stamps (within 0.5 s). The feature values do not change. Against video (thigh only, HARTH and Lendt), accuracy goes up by up to 0.9 percentage points in 4 of 6 datasets and down by 0.2 points in one.
+- **`hl_ratio`, `walk_feature` and `run_feature` are centred on their second**, like the other features. Their 4 s window started at the second, so it was 2 s late.
+- With `chunking=True`, the row at a chunk boundary is no longer lost.
+- **`Exposures.plot()` works after a clean install.** `vl-convert-python`, which altair needs to show the chart, is now a dependency.
 
 ## [2.4.0] - 2026-10-01
 
@@ -145,7 +137,6 @@ This release also contains the changes of 2.4.1rc1.
 - Multithreaded processing.
 
 [2.4.1]: https://github.com/actimotus/actimotus/releases/tag/v2.4.1
-[2.4.1rc1]: https://github.com/actimotus/actimotus/releases/tag/v2.4.1rc1
 [2.4.0]: https://github.com/actimotus/actimotus/releases/tag/v2.4.0
 [2.3.3]: https://github.com/actimotus/actimotus/releases/tag/v2.3.3
 [2.3.2]: https://github.com/actimotus/actimotus/releases/tag/v2.3.2
