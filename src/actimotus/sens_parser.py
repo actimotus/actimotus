@@ -98,7 +98,7 @@ class Sens(FileParser):
 
         self.check_empty(df)
 
-        df.set_index('datetime', inplace=True)
+        df = df.set_index('datetime')
 
         if self.normalize:
             df = df * SENS_NORMALIZATION_FACTOR

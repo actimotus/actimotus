@@ -62,7 +62,7 @@ class Sensor(ABC):
 
         if small_bouts.size > 0:
             small_bouts = bouts[bouts.isin(small_bouts)].drop_duplicates(keep='first').reset_index(drop=False)
-            small_bouts.rename(columns={'datetime': 'end', 'non-wear': 'bout'}, inplace=True)
+            small_bouts = small_bouts.rename(columns={'datetime': 'end', 'non-wear': 'bout'})
             small_bouts['end'] = small_bouts['end'] - pd.Timedelta(seconds=10)  # X seconds before start of short bout
             small_bouts.insert(
                 0, 'start', small_bouts['end'] - pd.Timedelta(seconds=5)

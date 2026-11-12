@@ -14,7 +14,7 @@ jobs:
         # resolution, which silently broke calendar-day grouping (see
         # the 2.3.2 entry in CHANGELOG.md). Keep the floor from
         # pyproject and the latest major here in sync as pandas releases.
-        pandas: ["2.2.3", "2.3.3", "3.0.3"]
+        pandas: ["2.2.3", "2.3.3", "3.0.3", "3.1.1"]
     name: pytest (pandas ${{ matrix.pandas }})
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +24,8 @@ jobs:
           enable-cache: true
       - name: Create environment (clean install, no dev group)
         # Install from [project.dependencies] only, plus pytest and the matrix
-        # pandas. Avoids `uv sync`, so the local `../labda` dev path in the
-        # lockfile is never resolved.
+        # pandas. Avoids `uv sync`, so the lockfile does not pin pandas and
+        # the dev group is not installed.
         run: |
           uv venv --python 3.11
           uv pip install -e . pytest "pandas==${{ matrix.pandas }}"

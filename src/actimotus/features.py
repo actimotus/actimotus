@@ -401,7 +401,7 @@ class Features:
             computed.append(self._compute_chunk(chunk, sampling_frequency=sampling_frequency))
 
         computed = pd.concat(computed)
-        computed.sort_index(inplace=True)
+        computed = computed.sort_index()
 
         return computed
 
@@ -496,7 +496,7 @@ class Features:
         """
         df = df.copy()
         df.index = df.index.as_unit('ms').astype(np.int64)  # Time in ms (resolution-agnostic)
-        df.drop(columns=['sum_y', 'sq_sum_y'], inplace=True)
+        df = df.drop(columns=['sum_y', 'sq_sum_y'])
 
         df.fillna(0, inplace=True)
         df[FEATURES] = (df[FEATURES] * SENS__FLOAT_FACTOR).astype(np.int32)

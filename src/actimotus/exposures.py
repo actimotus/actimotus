@@ -182,7 +182,7 @@ class Exposures:
             if col not in df.columns:
                 df[col] = pd.Timedelta(0)
 
-        df.drop(columns=['non-wear'], inplace=True)
+        df = df.drop(columns=['non-wear'])
 
         return df
 

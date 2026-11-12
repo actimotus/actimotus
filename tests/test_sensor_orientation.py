@@ -112,7 +112,7 @@ def test_the_signal_actually_exercises_the_cross_term(upright):
 def test_correction_recovers_the_upright_features(upright, upside_down, inside_out):
     """Flip the sensor physically, then undo it: every stored statistic must come back."""
     signs = FLIPS[(upside_down, inside_out)]
-    flipped = _features(_raw() * signs)
+    flipped = _features(_raw() * np.array(signs))
 
     corrected = _Sensor(upside_down, inside_out).fix_sensor_orientation(flipped)
 
@@ -128,7 +128,7 @@ def test_correction_recovers_the_upright_features(upright, upside_down, inside_o
 
 def test_combined_flip_leaves_the_cross_term_alone(upright):
     """The regression. Negating x and z leaves sum(x*z) unchanged -- (-x)(-z) == x*z."""
-    flipped = _features(_raw() * FLIPS[(True, True)])
+    flipped = _features(_raw() * np.array(FLIPS[(True, True)]))
 
     np.testing.assert_allclose(flipped['sum_dot_xz'], upright['sum_dot_xz'], atol=1e-5, rtol=1e-3)
 
@@ -140,7 +140,7 @@ def test_combined_flip_leaves_the_cross_term_alone(upright):
 @pytest.mark.parametrize(('upside_down', 'inside_out'), [(True, False), (False, True)])
 def test_single_flips_do_negate_the_cross_term(upright, upside_down, inside_out):
     """The other half: removing the negation everywhere would be just as wrong."""
-    flipped = _features(_raw() * FLIPS[(upside_down, inside_out)])
+    flipped = _features(_raw() * np.array(FLIPS[(upside_down, inside_out)]))
 
     np.testing.assert_allclose(flipped['sum_dot_xz'], -upright['sum_dot_xz'], atol=1e-5, rtol=1e-3)
 

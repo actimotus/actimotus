@@ -550,13 +550,12 @@ class Thigh(Sensor):
         self.get_walking_pace(df, **self.pace_settings(config))
 
         df.loc[df['activity'] == 'non-wear', 'direction'] = np.nan
-        df.rename(
+        df = df.rename(
             columns={
                 'inclination': 'thigh_inclination',
                 'side_tilt': 'thigh_side_tilt',
                 'direction': 'thigh_direction',
             },
-            inplace=True,
         )
 
         references.update_angle(bouts, 'thigh')

@@ -151,7 +151,7 @@ class Activities:
             output.append(df)
 
         output = pd.concat(output)
-        output.sort_index(inplace=True)
+        output = output.sort_index()
 
         return output, references
 

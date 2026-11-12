@@ -172,13 +172,12 @@ class Trunk(Sensor):
         df.loc[df['non-wear'], 'inclination'] = np.nan
         df.loc[df['non-wear'], 'direction'] = np.nan
 
-        df.rename(
+        df = df.rename(
             columns={
                 'inclination': 'trunk_inclination',
                 'side_tilt': 'trunk_side_tilt',
                 'direction': 'trunk_direction',
             },
-            inplace=True,
         )
 
         activities = activities.join(df[['trunk_inclination', 'trunk_side_tilt', 'trunk_direction']], how='left')

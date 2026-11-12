@@ -30,7 +30,7 @@ class Arm(Sensor):
             df = self.fix_bouts_orientation(df, bouts)
 
         df.loc[df['non-wear'], 'inclination'] = np.nan
-        df.rename(columns={'inclination': 'arm_inclination'}, inplace=True)
+        df = df.rename(columns={'inclination': 'arm_inclination'})
 
         return pd.DataFrame(df['arm_inclination'])
 
