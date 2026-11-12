@@ -8,6 +8,10 @@ Each breaking change is marked **Breaking**.
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-11-12
+
+This release also contains the changes of 2.4.1rc1.
+
 ### Fixed
 - **Feature rows now stay on real time when the real sampling rate drifts.** Before, the resampling treated the samples as evenly spaced, and the rows were labelled by counting from the first whole second. SENS sensors run at about 12.38-12.49 Hz, not 12.5 Hz, and the rate changes during the day, so the labels ran late against the real time stamps: up to 40 s over 6 days with one block, and up to about 18 s with one block per day. Also, the rows were centred on the first sample but labelled from the next whole second, so they could be up to 1 s late. Now `Features` finds the real centre time of each row from the time stamps, and each whole second takes the row whose centre is nearest (at most 0.5 s away). The feature values do not change, and the extra cost is close to zero. When the rate drifts, a row is now and then used for two seconds, or skipped (1 row in 4,500 to 7,300 on two SENS recordings). Against video labels (thigh only, HARTH and Lendt et al.), accuracy goes up in 5 of 6 datasets, by up to 0.9 percentage points, and down by 0.2 points in the walking-speed dataset.
 - **`hl_ratio`, `walk_feature` and `run_feature` now describe the same seconds as the other columns of their row.** Their 4 s window started at second k, so its centre was 2 s later than the 2 s rows of `x`, `y`, `z` and the standard deviations, which are centred on k. The window is now centred on k. Against video labels (thigh only, HARTH and Lendt et al.), this changes at most 0.06 % of the seconds and the accuracy by at most 0.01 percentage points, because `hl_ratio` is read only for bicycling (after a 9 s median) and `walk_feature` only for the walking pace. The pace boundaries can move by up to 2 s; this is not measured against video.
@@ -136,6 +140,8 @@ Each breaking change is marked **Breaking**.
 - Default logger.
 - Multithreaded processing.
 
+[2.4.1]: https://github.com/actimotus/actimotus/releases/tag/v2.4.1
+[2.4.1rc1]: https://github.com/actimotus/actimotus/releases/tag/v2.4.1rc1
 [2.4.0]: https://github.com/actimotus/actimotus/releases/tag/v2.4.0
 [2.3.3]: https://github.com/actimotus/actimotus/releases/tag/v2.3.3
 [2.3.2]: https://github.com/actimotus/actimotus/releases/tag/v2.3.2
